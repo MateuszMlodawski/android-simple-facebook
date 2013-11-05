@@ -1258,7 +1258,9 @@ public class SimpleFacebook
 			switch (state)
 			{
 			case CLOSED:
-				mOnLogoutListener.onLogout();
+				if (mOnLogoutListener != null) {
+					mOnLogoutListener.onLogout();
+				}
 				break;
 
 			case CLOSED_LOGIN_FAILED:
