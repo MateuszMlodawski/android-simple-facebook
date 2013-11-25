@@ -3,6 +3,7 @@ package com.sromku.simple.fb;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -192,7 +193,7 @@ public class SimpleFacebook
 
 	/**
 	 * Get my profile from facebook.<br>
-	 * This methos will return profile with next default properties depends on permissions you have:<br>
+	 * This method will return profile with next default properties depends on permissions you have:<br>
 	 * <em>id, name, first_name, middle_name, last_name, gender, locale, languages, link, username, timezone, updated_time, verified, bio, birthday, education, email, 
 	 * hometown, location, political, favorite_athletes, favorite_teams, quotes, relationship_status, religion, website, work</em>
 	 * 
@@ -303,7 +304,7 @@ public class SimpleFacebook
 
 	/**
 	 * Get my friends from facebook.<br>
-	 * This methos will return profile with next default properties depends on permissions you have:<br>
+	 * This method will return profile with next default properties depends on permissions you have:<br>
 	 * <em>id, name</em>
 	 * 
 	 * <br>
@@ -486,6 +487,324 @@ public class SimpleFacebook
 			}
 		}
 	}
+	
+	public void getAppRequests(final OnAppRequestsListener onAppRequestsListener)
+	{
+		// if we are logged in
+		if (isLogin())
+		{
+			Session session = getOpenSession();
+			Bundle bundle = null;
+			Request request = new Request(session, "me/apprequests", bundle, HttpMethod.GET, new Request.Callback()
+			{
+				@Override
+				public void onCompleted(Response response)
+				{
+					FacebookRequestError error = response.getError();
+					if (error != null)
+					{
+						// log
+						logError("failed to get app requests", error.getException());
+
+						// callback with 'exception'
+						if (onAppRequestsListener != null)
+						{
+							onAppRequestsListener.onException(error.getException());
+						}						
+					}
+					else
+					{
+						GraphObject graphObject = response.getGraphObject();					
+						if (graphObject != null)
+						{						
+							JSONObject graphResponse = graphObject.getInnerJSONObject();
+							try {
+								JSONArray result = graphResponse.getJSONArray( "data" );
+								if (onAppRequestsListener != null)
+								{
+									onAppRequestsListener.onComplete(result);
+								}
+							} catch (JSONException e) {
+								if (onAppRequestsListener != null)
+								{
+									onAppRequestsListener.onException(e);
+								}
+							}
+						}
+						else
+						{
+							// log
+							logError("The GraphObject in Response of getAppRequests has null value. Response=" + response.toString(), null);
+						}	
+					}	
+				}
+			});
+
+			RequestAsyncTask task = new RequestAsyncTask(request);
+			task.execute();
+
+			// callback with 'thinking'
+			if (onAppRequestsListener != null)
+			{
+				onAppRequestsListener.onThinking();
+			}
+		}
+		else
+		{
+			String reason = Errors.getError(ErrorMsg.LOGIN);
+			logError(reason, null);
+
+			// callback with 'fail' due to not being logged in
+			if (onAppRequestsListener != null)
+			{
+				onAppRequestsListener.onFail(reason);
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * Deletes an apprequest.<br>
+	 * <br>
+	 * 
+	 * @param inRequestId Input request id to be deleted. Note that it should have the form {USERID}_{REQUESTID} <code>String</code>
+	 * @param onDeleteRequestListener The listener for deletion action
+	 * @see https://developers.facebook.com/docs/android/app-link-requests/#step3
+	 */
+	public void deleteRequest(String inRequestId, final OnDeleteRequestListener onDeleteRequestListener) 
+	{
+		if(isLogin())
+		{
+		    // Create a new request for an HTTP delete with the
+		    // request ID as the Graph path.
+			Session session = getOpenSession();
+		    Request request = new Request(session, inRequestId, null, HttpMethod.DELETE, new Request.Callback() 
+		    {
+	            @Override
+	            public void onCompleted(Response response)
+	            {
+	            	FacebookRequestError error = response.getError();
+					if (error != null)
+					{
+						// log
+						logError("failed to delete requests", error.getException());
+
+						// callback with 'exception'
+						if (onDeleteRequestListener != null)
+						{
+							onDeleteRequestListener.onException(error.getException());
+						}
+					}
+					else
+					{
+						// callback with 'complete'
+						if (onDeleteRequestListener != null)
+						{
+							onDeleteRequestListener.onComplete();
+						}
+					}
+	            }
+	        });
+		    // Execute the request asynchronously.
+		    Request.executeBatchAsync(request);
+		}
+		else
+		{
+			String reason = Errors.getError(ErrorMsg.LOGIN);
+			logError(reason, null);
+
+			// callback with 'fail' due to not being logged in
+			if (onDeleteRequestListener != null)
+			{
+				onDeleteRequestListener.onFail(reason);
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * Gets scores using Scores API for games. <br>
+	 * <br>
+	 * 
+	 * 
+	 * @param onScoresRequestListener The listener for getting scores
+	 * @see https://developers.facebook.com/docs/games/scores/
+	 */
+	public void getScores(final OnScoresRequestListener onScoresRequestListener)
+	{
+		// if we are logged in
+		if (isLogin())
+		{
+			Session session = getOpenSession();
+			Bundle bundle = null;
+			Request request = new Request(session, mConfiguration.getAppId() + "/scores", bundle, HttpMethod.GET, new Request.Callback()
+			{
+				@Override
+				public void onCompleted(Response response)
+				{
+					FacebookRequestError error = response.getError();
+					if (error != null)
+					{
+						// log
+						logError("failed to get scores", error.getException());
+
+						// callback with 'exception'
+						if (onScoresRequestListener != null)
+						{
+							onScoresRequestListener.onException(error.getException());
+						}						
+					}
+					else
+					{
+						GraphObject graphObject = response.getGraphObject();					
+						if (graphObject != null)
+						{						
+							JSONObject graphResponse = graphObject.getInnerJSONObject();
+							try {
+								JSONArray result = graphResponse.getJSONArray( "data" );
+								if (onScoresRequestListener != null)
+								{
+									onScoresRequestListener.onComplete(result);
+								}
+							} catch (JSONException e) {
+								if (onScoresRequestListener != null)
+								{
+									onScoresRequestListener.onException(e);
+								}
+							}
+						}
+						else
+						{
+							// log
+							logError("The GraphObject in Response of getScores has null value. Response=" + response.toString(), null);
+						}	
+					}	
+				}
+			});
+
+			RequestAsyncTask task = new RequestAsyncTask(request);
+			task.execute();
+
+			// callback with 'thinking'
+			if (onScoresRequestListener != null)
+			{
+				onScoresRequestListener.onThinking();
+			}
+		}
+		else
+		{
+			String reason = Errors.getError(ErrorMsg.LOGIN);
+			logError(reason, null);
+
+			// callback with 'fail' due to not being logged in
+			if (onScoresRequestListener != null)
+			{
+				onScoresRequestListener.onFail(reason);
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * Posts a score using Scores API for games. If missing publish_actions permission, we do not ask again for it.<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permissions#PUBLISH_ACTION}
+	 * 
+	 * 
+	 * @param score Score to be posted. <code>int</code>
+	 * @param onPostScoreListener The listener for posting score
+	 * @see https://developers.facebook.com/docs/games/scores/
+	 */
+	public void postScore(int score, final OnPostScoreListener onPostScoreListener)
+	{
+		if(isLogin())
+		{
+			// if we defined the publish permission
+			if (mConfiguration.getPublishPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
+			{
+				// callback with 'thinking'
+				if (onPostScoreListener != null)
+				{
+					onPostScoreListener.onThinking();
+				}
+
+				/*
+				 * Check if session to facebook has 'publish_action' permission. If not, we will return fail, 
+				 * client app may try to ask for permission later (not to annoy users).
+				 */
+				if (!getOpenSessionPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
+				{
+					String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
+					logError(reason, null);
+
+					// callback with 'fail' due to not being logged in
+					if (onPostScoreListener != null)
+					{
+						onPostScoreListener.onFail(reason);
+					}
+					return;
+				}
+			}
+			else
+			{
+				String reason = Errors.getError(ErrorMsg.PERMISSIONS_PUBLISH);
+				logError(reason, null);
+
+				// callback with 'fail' due to not being logged in
+				if (onPostScoreListener != null)
+				{
+					onPostScoreListener.onFail(reason);
+				}
+				return;
+			}
+
+			Bundle param = new Bundle();
+			param.putInt("score", score);
+			Request request = new Request(getOpenSession(), "me/scores", param, HttpMethod.POST, new Request.Callback()
+			{
+				@Override
+				public void onCompleted(Response response)
+				{
+					FacebookRequestError error = response.getError();
+					if (error != null)
+					{
+						// log
+						logError("Failed to publish score", error.getException());
+	
+						// callback with 'exception'
+						if (onPostScoreListener != null)
+						{
+							onPostScoreListener.onException(error.getException());
+						}
+					}
+					else
+					{
+						// callback with 'complete'
+						if (onPostScoreListener != null)
+						{
+							onPostScoreListener.onComplete();
+						}
+					}				
+				}
+			});
+	
+			RequestAsyncTask task = new RequestAsyncTask(request);
+			task.execute();
+		}
+		else
+		{
+			String reason = Errors.getError(ErrorMsg.LOGIN);
+			logError(reason, null);
+
+			// callback with 'fail' due to not being logged in
+			if (onPostScoreListener != null)
+			{
+				onPostScoreListener.onFail(reason);
+			}
+		}
+	}
 
 	/**
 	 * 
@@ -533,8 +852,10 @@ public class SimpleFacebook
 							// this fail can happen when user doesn't accept the publish permissions
 							String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
 							logError(reason, null);
-
-							onPublishListener.onFail(reason);
+							if (onPublishListener != null)
+							{
+								onPublishListener.onFail(reason);
+							}
 						}
 					};
 
@@ -616,7 +937,10 @@ public class SimpleFacebook
 							String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
 							logError(reason, null);
 
-							onPublishListener.onFail(reason);
+							if (onPublishListener != null)
+							{
+								onPublishListener.onFail(reason);
+							}
 						}
 					};
 
@@ -707,7 +1031,10 @@ public class SimpleFacebook
 							String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
 							logError(reason, null);
 
-							onPublishListener.onFail(reason);
+							if (onPublishListener != null)
+							{
+								onPublishListener.onFail(reason);
+							}
 						}
 					};
 
@@ -951,12 +1278,15 @@ public class SimpleFacebook
 		Session session = Session.getActiveSession();
 		if (session == null)
 		{
-			if (session == null)
+			if ( mActivity == null )
 			{
-				session = new Session.Builder(mActivity.getApplicationContext())
+				// You can't create a session if the activity/context hasn't been initialized
+				// This is now possible because the library can be started without context.
+				return false;
+			}
+			session = new Session.Builder(mActivity.getApplicationContext())
 					.setApplicationId(mConfiguration.getAppId())
 					.build();
-			}
 			Session.setActiveSession(session);
 		}
 		if (session.isOpened())
@@ -966,7 +1296,7 @@ public class SimpleFacebook
 		}
 
 		/*
-		 * Check if we can reload the session when it will be nessecary. We won't do it now.
+		 * Check if we can reload the session when it will be neccesary. We won't do it now.
 		 */
 		if (session.getState().equals(SessionState.CREATED_TOKEN_LOADED))
 		{
@@ -990,7 +1320,7 @@ public class SimpleFacebook
 	/**
 	 * Get access token of open session
 	 * 
-	 * @return
+	 * @return a {@link String} containing the Access Token of the current {@link Session} or null if no session.
 	 */
 	public String getAccessToken()
 	{
@@ -1019,7 +1349,7 @@ public class SimpleFacebook
 	{
 		mActivity = null;
 	}
-
+	
 	private static void publishImpl(Feed feed, final OnPublishListener onPublishListener)
 	{
 		Session session = getOpenSession();
@@ -1204,7 +1534,7 @@ public class SimpleFacebook
 		RequestAsyncTask task = new RequestAsyncTask(request);
 		task.execute();
 	}
-
+	
 	private void openInviteDialog(Activity activity, Bundle params, final OnInviteListener onInviteListener)
 	{
 		mDialog = new WebDialog.RequestsDialogBuilder(activity, Session.getActiveSession(), params).
@@ -1240,7 +1570,7 @@ public class SimpleFacebook
 						else
 						{
 							List<String> invitedFriends = fetchInvitedFriends(values);
-							onInviteListener.onComplete(invitedFriends);
+							onInviteListener.onComplete(invitedFriends, object.toString());
 						}
 					}
 					mDialog = null;
@@ -1432,7 +1762,8 @@ public class SimpleFacebook
 			switch (state)
 			{
 			case CLOSED:
-				if (mOnLogoutListener != null) {
+			    if (mOnLogoutListener != null) 
+			    {
 					mOnLogoutListener.onLogout();
 				}
 				break;
@@ -1447,7 +1778,10 @@ public class SimpleFacebook
 				break;
 
 			case OPENING:
-				mOnLoginListener.onThinking();
+			    if (mOnLoginListener != null)
+			    {
+					mOnLoginListener.onThinking();
+				}
 				break;
 
 			case OPENED:
@@ -1486,7 +1820,10 @@ public class SimpleFacebook
 				}
 				else
 				{
-					mOnLoginListener.onLogin();
+					if (mOnLoginListener != null) 
+				    {
+						mOnLoginListener.onLogin();
+					}
 				}
 				break;
 
@@ -1503,8 +1840,13 @@ public class SimpleFacebook
 				else if (mDoOnLogin)
 				{
 					mDoOnLogin = false;
-					mOnLoginListener.onLogin();
+
+					if (mOnLoginListener != null)
+					{
+						mOnLoginListener.onLogin();
+					}
 				}
+
 				break;
 
 			default:
@@ -1566,6 +1908,50 @@ public class SimpleFacebook
 	public interface OnFriendsRequestListener extends OnActionListener
 	{
 		void onComplete(List<Profile> friends);
+	}
+	
+	/**
+	 * On get app requests listener
+	 * 
+	 * @author koraybalci
+	 * 
+	 */
+	public interface OnAppRequestsListener extends OnActionListener
+	{
+		void onComplete(JSONArray result);
+	}
+
+	/**
+	 * On delete request listener
+	 * 
+	 * @author koraybalci
+	 * 
+	 */
+	public interface OnDeleteRequestListener extends OnActionListener
+	{
+		void onComplete();
+	}
+	
+	/**
+	 * On get scores requests listener
+	 * 
+	 * @author koraybalci
+	 * 
+	 */
+	public interface OnScoresRequestListener extends OnActionListener
+	{
+		void onComplete(JSONArray result);
+	}
+	
+	/**
+	 * On post score listener
+	 * 
+	 * @author koraybalci
+	 * 
+	 */
+	public interface OnPostScoreListener extends OnActionListener
+	{
+		void onComplete();
 	}
 
 	/**
@@ -1643,7 +2029,7 @@ public class SimpleFacebook
 	 */
 	public interface OnInviteListener extends OnErrorListener
 	{
-		void onComplete(List<String> invitedFriends);
+		void onComplete(List<String> invitedFriends, String requestId);
 
 		void onCancel();
 	}
