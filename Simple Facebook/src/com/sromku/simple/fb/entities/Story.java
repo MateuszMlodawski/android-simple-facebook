@@ -1,5 +1,6 @@
 package com.sromku.simple.fb.entities;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
 import android.os.Bundle;
@@ -200,12 +201,13 @@ public class Story
 
 		String getObjectUrl()
 		{
-			return mHostFileUrl + "?" + encodeUrl(mBundle);
+			String params = encodeUrl(mBundle);
+			return params.length() > 0 ? mHostFileUrl + "?" + params : mHostFileUrl;
 		}
 
 		private static String encodeUrl(Bundle parameters)
 		{
-			if (parameters == null)
+			if (parameters == null || parameters.isEmpty())
 			{
 				return "";
 			}
@@ -228,7 +230,12 @@ public class Story
 				{
 					sb.append("&");
 				}
-				sb.append(URLEncoder.encode(key) + "=" + URLEncoder.encode(parameters.getString(key)));
+				try {
+					sb.append(URLEncoder.encode(key, "UTF-8") + "=" + URLEncoder.encode(parameters.getString(key), "UTF-8"));
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+					continue;
+				}
 			}
 			return sb.toString();
 		}
