@@ -1409,10 +1409,26 @@ public class SimpleFacebook
 				{
 					// log
 					logError("The GraphObject in Response of publish action has null value. Response=" + response.toString(), null);
-
-					if (onPublishListener != null)
+					
+					FacebookRequestError error = response.getError();
+					if (error != null)
 					{
-						onPublishListener.onComplete("0");
+						// log
+						logError("Failed to publish", error.getException());
+
+						// callback with 'exception'
+						if (onPublishListener != null)
+						{
+							onPublishListener.onException(error.getException());
+						}
+					}
+					else
+					{
+						// callback with 'fail'
+						if (onPublishListener != null)
+						{
+							onPublishListener.onFail("Failed to publish");
+						}
 					}
 				}
 			}
@@ -1472,10 +1488,26 @@ public class SimpleFacebook
 				{
 					// log
 					logError("The GraphObject in Response of publish action has null value. Response=" + response.toString(), null);
-
-					if (onPublishListener != null)
+					
+					FacebookRequestError error = response.getError();
+					if (error != null)
 					{
-						onPublishListener.onComplete("0");
+						// log
+						logError("Failed to publish", error.getException());
+
+						// callback with 'exception'
+						if (onPublishListener != null)
+						{
+							onPublishListener.onException(error.getException());
+						}
+					}
+					else
+					{
+						// callback with 'fail'
+						if (onPublishListener != null)
+						{
+							onPublishListener.onFail("Failed to publish");
+						}
 					}
 				}
 			}
@@ -1533,10 +1565,26 @@ public class SimpleFacebook
 				{
 					// log
 					logError("The GraphObject in Response of publish action has null value. Response=" + response.toString(), null);
-
-					if (onPublishListener != null)
+					
+					FacebookRequestError error = response.getError();
+					if (error != null)
 					{
-						onPublishListener.onComplete("0");
+						// log
+						logError("Failed to publish", error.getException());
+
+						// callback with 'exception'
+						if (onPublishListener != null)
+						{
+							onPublishListener.onException(error.getException());
+						}
+					}
+					else
+					{
+						// callback with 'fail'
+						if (onPublishListener != null)
+						{
+							onPublishListener.onFail("Failed to publish");
+						}
 					}
 				}
 			}

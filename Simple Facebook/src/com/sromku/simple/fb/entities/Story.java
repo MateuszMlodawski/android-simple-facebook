@@ -234,7 +234,6 @@ public class Story
 					sb.append(URLEncoder.encode(key, "UTF-8") + "=" + URLEncoder.encode(parameters.getString(key), "UTF-8"));
 				} catch (UnsupportedEncodingException e) {
 					e.printStackTrace();
-					continue;
 				}
 			}
 			return sb.toString();
