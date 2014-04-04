@@ -3,12 +3,10 @@ package com.sromku.simple.fb.utils;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class Attributes
-{
+public abstract class Attributes {
 	protected Map<String, String> attributes = new HashMap<String, String>();
 
-	public Map<String, String> getAttributes()
-	{
+	public Map<String, String> getAttributes() {
 		return attributes;
 	}
 
@@ -17,8 +15,7 @@ public abstract class Attributes
 	 * 
 	 * @return {@link PictureAttributes}
 	 */
-	public static PictureAttributes createPictureAttributes()
-	{
+	public static PictureAttributes createPictureAttributes() {
 		return new PictureAttributes();
 	}
 }

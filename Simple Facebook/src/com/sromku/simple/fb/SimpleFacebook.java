@@ -3,116 +3,164 @@ package com.sromku.simple.fb;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
-import android.view.Window;
-import android.view.WindowManager;
 
-import com.facebook.FacebookException;
-import com.facebook.FacebookOperationCanceledException;
-import com.facebook.FacebookRequestError;
-import com.facebook.HttpMethod;
-import com.facebook.Request;
-import com.facebook.RequestAsyncTask;
-import com.facebook.Response;
+import com.facebook.AppEventsLogger;
 import com.facebook.Session;
-import com.facebook.SessionState;
-import com.facebook.model.GraphMultiResult;
-import com.facebook.model.GraphObject;
-import com.facebook.model.GraphObjectList;
-import com.facebook.model.GraphUser;
-import com.facebook.widget.WebDialog;
+import com.sromku.simple.fb.actions.DeleteRequestAction;
+import com.sromku.simple.fb.actions.GetAction;
+import com.sromku.simple.fb.actions.GetAlbumsAction;
+import com.sromku.simple.fb.actions.GetAppRequestsAction;
+import com.sromku.simple.fb.actions.GetCheckinsAction;
+import com.sromku.simple.fb.actions.GetCommentsAction;
+import com.sromku.simple.fb.actions.GetEventsAction;
+import com.sromku.simple.fb.actions.GetFriendsAction;
+import com.sromku.simple.fb.actions.GetGroupsAction;
+import com.sromku.simple.fb.actions.GetLikesAction;
+import com.sromku.simple.fb.actions.GetPageAction;
+import com.sromku.simple.fb.actions.GetPhotosAction;
+import com.sromku.simple.fb.actions.GetPostsAction;
+import com.sromku.simple.fb.actions.GetProfileAction;
+import com.sromku.simple.fb.actions.GetScoresAction;
+import com.sromku.simple.fb.actions.GetVideosAction;
+import com.sromku.simple.fb.actions.InviteAction;
+import com.sromku.simple.fb.actions.PublishAction;
+import com.sromku.simple.fb.actions.PublishFeedDialogAction;
 import com.sromku.simple.fb.entities.Album;
-import com.sromku.simple.fb.entities.Checkins;
+import com.sromku.simple.fb.entities.Checkin;
+import com.sromku.simple.fb.entities.Comment;
+import com.sromku.simple.fb.entities.Event;
+import com.sromku.simple.fb.entities.Event.EventDecision;
 import com.sromku.simple.fb.entities.Feed;
+import com.sromku.simple.fb.entities.Group;
+import com.sromku.simple.fb.entities.Page;
 import com.sromku.simple.fb.entities.Photo;
+import com.sromku.simple.fb.entities.Post;
+import com.sromku.simple.fb.entities.Post.PostType;
 import com.sromku.simple.fb.entities.Profile;
+import com.sromku.simple.fb.entities.Profile.Properties;
+import com.sromku.simple.fb.entities.Publishable;
+import com.sromku.simple.fb.entities.Score;
 import com.sromku.simple.fb.entities.Story;
 import com.sromku.simple.fb.entities.Video;
-import com.sromku.simple.fb.utils.Errors;
-import com.sromku.simple.fb.utils.Errors.ErrorMsg;
-import com.sromku.simple.fb.utils.Logger;
+import com.sromku.simple.fb.listeners.OnActionListener;
+import com.sromku.simple.fb.listeners.OnAlbumsListener;
+import com.sromku.simple.fb.listeners.OnAppRequestsListener;
+import com.sromku.simple.fb.listeners.OnCheckinsListener;
+import com.sromku.simple.fb.listeners.OnCommentsListener;
+import com.sromku.simple.fb.listeners.OnDeleteListener;
+import com.sromku.simple.fb.listeners.OnEventsListener;
+import com.sromku.simple.fb.listeners.OnFriendsListener;
+import com.sromku.simple.fb.listeners.OnGroupsListener;
+import com.sromku.simple.fb.listeners.OnInviteListener;
+import com.sromku.simple.fb.listeners.OnLikesListener;
+import com.sromku.simple.fb.listeners.OnLoginListener;
+import com.sromku.simple.fb.listeners.OnLogoutListener;
+import com.sromku.simple.fb.listeners.OnNewPermissionsListener;
+import com.sromku.simple.fb.listeners.OnPageListener;
+import com.sromku.simple.fb.listeners.OnPhotosListener;
+import com.sromku.simple.fb.listeners.OnPostsListener;
+import com.sromku.simple.fb.listeners.OnProfileListener;
+import com.sromku.simple.fb.listeners.OnPublishListener;
+import com.sromku.simple.fb.listeners.OnScoresListener;
+import com.sromku.simple.fb.listeners.OnVideosListener;
 
 /**
- * Simple Facebook SDK which wraps original Facebook SDK 3.5
- * 
- * <br>
- * <br>
- * <b>Features:</b>
- * <ul>
- * <li>Simple configuration</li>
- * <li>No need to use LoginButton view</li>
- * <li>Login/logout</li>
- * <li>Publish feed</li>
- * <li>Publish open graph story</li>
- * <li>Publish photo</li>
- * <li>Invite friends</li>
- * <li>Fetch my profile</li>
- * <li>Fetch friends</li>
- * <li>Fetch albums</li>
- * <li>Fetch check-ins</li>
- * <li>Predefined all possible permissions. See {@link Permissions}</li>
- * <li>No need to care for correct sequence logging with READ and PUBLISH permissions</li>
- * </ul>
+ * Simple Facebook SDK which wraps original Facebook SDK
  * 
  * @author sromku
  */
-public class SimpleFacebook
-{
+public class SimpleFacebook {
 	private static SimpleFacebook mInstance = null;
 	private static SimpleFacebookConfiguration mConfiguration = new SimpleFacebookConfiguration.Builder().build();
 
 	private static Activity mActivity;
-	private SessionStatusCallback mSessionStatusCallback = null;
+	private static SessionManager mSessionManager = null;
 
-	private WebDialog mDialog = null;
-
-	private SimpleFacebook()
-	{
-		mSessionStatusCallback = new SessionStatusCallback();
+	private SimpleFacebook() {
 	}
 
-	public static void initialize(Activity activity)
-	{
-		if (mInstance == null)
-		{
+	/**
+	 * Initialize the library and pass an {@link Activity}. This kind of
+	 * initialization is good in case you have a one base activity and many
+	 * fragments. In this case you just initialize this library and then just
+	 * get an instance of this library by {@link SimpleFacebook#getInstance()}
+	 * in any other place.
+	 * 
+	 * @param activity
+	 *            Activity
+	 */
+	public static void initialize(Activity activity) {
+		if (mInstance == null) {
 			mInstance = new SimpleFacebook();
+			mSessionManager = new SessionManager(mActivity, mConfiguration);
 		}
-
 		mActivity = activity;
+		SessionManager.activity = activity;
 	}
 
-	public static SimpleFacebook getInstance(Activity activity)
-	{
-		if (mInstance == null)
-		{
+	/**
+	 * Get the instance of {@link SimpleFacebook}. This method, not only returns
+	 * a singleton instance of {@link SimpleFacebook} but also updates the
+	 * current activity with the passed activity. <br>
+	 * If you have more than one <code>Activity</code> in your application. And
+	 * more than one activity do something with facebook. Then, call this method
+	 * in {@link Activity#onResume()} method
+	 * 
+	 * <pre>
+	 * &#064;Override
+	 * protected void onResume() {
+	 * 	super.onResume();
+	 * 	mSimpleFacebook = SimpleFacebook.getInstance(this);
+	 * }
+	 * </pre>
+	 * 
+	 * @param activity
+	 * @return {@link SimpleFacebook} instance
+	 */
+	public static SimpleFacebook getInstance(Activity activity) {
+		if (mInstance == null) {
 			mInstance = new SimpleFacebook();
+			mSessionManager = new SessionManager(activity, mConfiguration);
 		}
-
 		mActivity = activity;
-		return mInstance;
-	}
-
-	public static SimpleFacebook getInstance()
-	{
+		SessionManager.activity = activity;
 		return mInstance;
 	}
 
 	/**
-	 * Set facebook configuration
+	 * Get the instance of {@link SimpleFacebook}. <br>
+	 * <br>
+	 * <b>Important:</b> Use this method only after you initialized this library
+	 * or by: {@link #initialize(Activity)} or by {@link #getInstance(Activity)}
 	 * 
-	 * @param facebookToolsConfiguration
+	 * @return The {@link SimpleFacebook} instance
 	 */
-	public static void setConfiguration(SimpleFacebookConfiguration facebookToolsConfiguration)
-	{
-		mConfiguration = facebookToolsConfiguration;
+	public static SimpleFacebook getInstance() {
+		return mInstance;
+	}
+
+	/**
+	 * Set facebook configuration. <b>Make sure</b> to set a configuration
+	 * before first actual use of this library like (login, getProfile, etc..).
+	 * 
+	 * @param configuration
+	 *            The configuration of this library
+	 */
+	public static void setConfiguration(SimpleFacebookConfiguration configuration) {
+		mConfiguration = configuration;
+		SessionManager.configuration = configuration;
+	}
+
+	/**
+	 * Get configuration
+	 * 
+	 * @return
+	 */
+	public static SimpleFacebookConfiguration getConfiguration() {
+		return mConfiguration;
 	}
 
 	/**
@@ -120,216 +168,259 @@ public class SimpleFacebook
 	 * 
 	 * @param onLoginListener
 	 */
-	public void login(OnLoginListener onLoginListener)
-	{
-		if (isLogin())
-		{
-			// log
-			logInfo("You were already logged in before calling 'login()' method");
-
-			if (onLoginListener != null)
-			{
-				onLoginListener.onLogin();
-			}
-		}
-		else
-		{
-			Session session = Session.getActiveSession();
-			if (session == null || session.getState().isClosed())
-			{
-				session = new Session.Builder(mActivity.getApplicationContext())
-					.setApplicationId(mConfiguration.getAppId())
-					.build();
-				Session.setActiveSession(session);
-			}
-
-			mSessionStatusCallback.mOnLoginListener = onLoginListener;
-			session.addCallback(mSessionStatusCallback);
-
-			/*
-			 * If session is not opened, then open it
-			 */
-			if (!session.isOpened())
-			{
-				openSession(session, true);
-			}
-			else
-			{
-				if (onLoginListener != null)
-				{
-					onLoginListener.onLogin();
-				}
-			}
-		}
+	public void login(OnLoginListener onLoginListener) {
+		mSessionManager.login(onLoginListener);
 	}
 
 	/**
 	 * Logout from Facebook
 	 */
-	public void logout(OnLogoutListener onLogoutListener)
-	{
-		if (isLogin())
-		{
-			Session session = Session.getActiveSession();
-			if (session != null && !session.isClosed())
-			{
-				mSessionStatusCallback.mOnLogoutListener = onLogoutListener;
-				session.closeAndClearTokenInformation();
-				session.removeCallback(mSessionStatusCallback);
-
-				if (onLogoutListener != null)
-				{
-					onLogoutListener.onLogout();
-				}
-			}
-		}
-		else
-		{
-			// log
-			logInfo("You were already logged out before calling 'logout()' method");
-
-			if (onLogoutListener != null)
-			{
-				onLogoutListener.onLogout();
-			}
-		}
+	public void logout(OnLogoutListener onLogoutListener) {
+		mSessionManager.logout(onLogoutListener);
 	}
 
 	/**
-	 * Get my profile from facebook.<br>
-	 * This method will return profile with next default properties depends on permissions you have:<br>
-	 * <em>id, name, first_name, middle_name, last_name, gender, locale, languages, link, username, timezone, updated_time, verified, bio, birthday, education, email, 
-	 * hometown, location, political, favorite_athletes, favorite_teams, quotes, relationship_status, religion, website, work</em>
+	 * Are we logged in to facebook
 	 * 
-	 * <br>
-	 * <br>
-	 * If you need additional or other profile properties like: <em>age_range, picture and more</em>, then use
-	 * this method: {@link #getProfile(Properties, OnProfileRequestListener)} <br>
-	 * <br>
-	 * <b>Note:</b> If you need only few properties for your app, then it is recommended <b>not</b> to use
-	 * this method, since getting unnecessary properties is time consuming task from facebook side.<br>
-	 * It is recommended in this case, to use {@link #getProfile(Properties, OnProfileRequestListener)} and
-	 * mention only needed properties.
-	 * 
-	 * @param onProfileRequestListener
+	 * @return <code>True</code> if we have active and open session to facebook
 	 */
-	public void getProfile(final OnProfileRequestListener onProfileRequestListener)
-	{
-		getProfile(null, onProfileRequestListener);
+	public boolean isLogin() {
+		return mSessionManager.isLogin(true);
 	}
 
 	/**
-	 * Get my profile from facebook by mentioning specific parameters. <br>
-	 * For example, if you need: <em>square picture 500x500 pixels</em>
+	 * General GET method.
 	 * 
-	 * @param onProfileRequestListener
-	 * @param properties The {@link Properties}. <br>
-	 *            To create {@link Properties} instance use:
-	 * 
-	 *            <pre>
-	 * // define the profile picture we want to get
-	 * PictureAttributes pictureAttributes = Attributes.createPictureAttributes();
-	 * pictureAttributes.setType(PictureType.SQUARE);
-	 * pictureAttributes.setHeight(500);
-	 * pictureAttributes.setWidth(500);
-	 * 
-	 * // create properties
-	 * Properties properties = new Properties.Builder()
-	 * 	.add(Properties.ID)
-	 * 	.add(Properties.FIRST_NAME)
-	 * 	.add(Properties.PICTURE, attributes)
-	 * 	.build();
-	 * </pre>
+	 * @param entityId
+	 *            The id of the entity you want to retrieve.
+	 * @param edge
+	 *            The graph edge. Like "friends", "groups" ...
+	 * @param bundle
+	 *            The 'get' parameters
+	 * @param onActionListener
+	 *            The listener with the type you expect as response.
 	 */
-	public void getProfile(Properties properties, final OnProfileRequestListener onProfileRequestListener)
-	{
-		// if we are logged in
-		if (isLogin())
-		{
-			Session session = getOpenSession();
-			Bundle bundle = null;
-			if (properties != null)
-			{
-				bundle = properties.getBundle();
-			}
-			Request request = new Request(session, "me", bundle, HttpMethod.GET, new Request.Callback()
-			{
-				@Override
-				public void onCompleted(Response response)
-				{
-					GraphUser graphUser = response.getGraphObjectAs(GraphUser.class);
-
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("failed to get profile", error.getException());
-
-						// callback with 'exception'
-						if (onProfileRequestListener != null)
-						{
-							onProfileRequestListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onProfileRequestListener != null)
-						{
-							Profile profile = Profile.create(graphUser);
-							onProfileRequestListener.onComplete(profile);
-						}
-					}
-
+	public <T> void get(String entityId, String edge, final Bundle bundle, OnActionListener<T> onActionListener) {
+		GetAction<T> getAction = new GetAction<T>(mSessionManager) {
+			@Override
+			protected Bundle getBundle() {
+				if (bundle != null) {
+					return bundle;
 				}
-			});
-
-			RequestAsyncTask task = new RequestAsyncTask(request);
-			task.execute();
-
-			// callback with 'thinking'
-			if (onProfileRequestListener != null)
-			{
-				onProfileRequestListener.onThinking();
+				return super.getBundle();
 			}
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
+		};
+		getAction.setActionListener(onActionListener);
+		getAction.setTarget(entityId);
+		getAction.setEdge(edge);
+		getAction.execute();
+	}
 
-			// callback with 'fail' due to not being logged
-			if (onProfileRequestListener != null)
-			{
-				onProfileRequestListener.onFail(reason);
-			}
-		}
+	/**
+	 * Get my albums.<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_PHOTOS}
+	 * 
+	 * @param onAlbumsListener
+	 *            The callback listener
+	 */
+	public void getAlbums(OnAlbumsListener onAlbumsListener) {
+		GetAlbumsAction getAlbumsAction = new GetAlbumsAction(mSessionManager);
+		getAlbumsAction.setActionListener(onAlbumsListener);
+		getAlbumsAction.execute();
+	}
+
+	/**
+	 * Get albums of entity. <br>
+	 * <br>
+	 * The entity can be one of:<br>
+	 * - <b>Profile</b>. It can be you, your friend or any other profile. To get
+	 * id of the profile: {@link Profile#getId()}<br>
+	 * - <b>Page</b>. It can be any page. To get the page id:
+	 * {@link Page#getId()}<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_PHOTOS}<br>
+	 * {@link Permission#FRIENDS_PHOTOS}
+	 * 
+	 * @param entityId
+	 *            profile id or page id.
+	 * @param onAlbumsListener
+	 *            The callback listener.
+	 */
+	public void getAlbums(String entityId, OnAlbumsListener onAlbumsListener) {
+		GetAlbumsAction getAlbumsAction = new GetAlbumsAction(mSessionManager);
+		getAlbumsAction.setActionListener(onAlbumsListener);
+		getAlbumsAction.setTarget(entityId);
+		getAlbumsAction.execute();
+	}
+
+	/**
+	 * Get all app requests made by me to others or by others to me.
+	 * 
+	 * @param onAppRequestsListener
+	 *            The callback listener.
+	 */
+	public void getAppRequests(OnAppRequestsListener onAppRequestsListener) {
+		GetAppRequestsAction getAppRequestsAction = new GetAppRequestsAction(mSessionManager);
+		getAppRequestsAction.setActionListener(onAppRequestsListener);
+		getAppRequestsAction.execute();
+	}
+
+	/**
+	 * Get checkins of the user.<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_CHECKINS}<br>
+	 * {@link Permission#FRIENDS_CHECKINS}
+	 * 
+	 * @param onCheckinsListener
+	 *            The callback listener.
+	 */
+	public void getCheckins(OnCheckinsListener onCheckinsListener) {
+		GetCheckinsAction getCheckinsAction = new GetCheckinsAction(mSessionManager);
+		getCheckinsAction.setActionListener(onCheckinsListener);
+		getCheckinsAction.execute();
+	}
+
+	/**
+	 * Get checkins of entity.<br>
+	 * <br>
+	 * The entity can be one of:<br>
+	 * - <b>Profile</b>. It can be you, your friend or any other profile. To get
+	 * id of the profile: {@link Profile#getId()}<br>
+	 * - <b>Page</b>. It can be any page. To get the page id:
+	 * {@link Page#getId()}<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_CHECKINS}<br>
+	 * {@link Permission#FRIENDS_CHECKINS}
+	 * 
+	 * @param entityId
+	 *            profile id or page id.
+	 * @param onCheckinsListener
+	 *            The callback listener.
+	 */
+	public void getCheckins(String entityId, OnCheckinsListener onCheckinsListener) {
+		GetCheckinsAction getCheckinsAction = new GetCheckinsAction(mSessionManager);
+		getCheckinsAction.setActionListener(onCheckinsListener);
+		getCheckinsAction.setTarget(entityId);
+		getCheckinsAction.execute();
+	}
+
+	/**
+	 * Get comments of specific entity.<br>
+	 * <br>
+	 * The entity can be one of:<br>
+	 * - <b>Album</b>. Any album. To get the album id: {@link Album#getId()}<br>
+	 * - <b>Checkin</b>. Any checkin. To get the checkin id:
+	 * {@link Checkin#getId()}<br>
+	 * - <b>Comment</b>. Get all replied comments to this original comment. To
+	 * get comment id: {@link Comment#getId()} <br>
+	 * - <b>Photo</b>. Any photo. To get the photo id: {@link Photo#getId()} <br>
+	 * - <b>Post</b>. Any post. To get the post id: {@link Post#getId()} <br>
+	 * - <b>Video</b>. Any video. To get the video id: {@link Video#getId()} <br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * No special permission is needed, except the permission you asked for
+	 * getting the entity itself. For example, if you want to get comments of
+	 * album, you need to have the {@link Permission#USER_PHOTOS} or
+	 * {@link Permission#FRIENDS_PHOTOS} for getting the comments of this album.
+	 * 
+	 * @param entityId
+	 *            Album, Checkin, Comment, Link, Photo, Post or Video.
+	 * @param onCommentsListener
+	 *            The callback listener.
+	 */
+	public void getComments(String entityId, OnCommentsListener onCommentsListener) {
+		GetCommentsAction getCommentsAction = new GetCommentsAction(mSessionManager);
+		getCommentsAction.setActionListener(onCommentsListener);
+		getCommentsAction.setTarget(entityId);
+		getCommentsAction.execute();
+	}
+
+	/**
+	 * Get events of the user. Select which events you want to get by passing
+	 * {@link EventDesicion}.<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_EVENTS}<br>
+	 * {@link Permission#FRIENDS_EVENTS}
+	 * 
+	 * @param eventDecision
+	 *            The type of event: attending, maybe, declined.
+	 * @param onEventsListener
+	 *            The callback listener.
+	 */
+	public void getEvents(EventDecision eventDecision, OnEventsListener onEventsListener) {
+		GetEventsAction getEventsAction = new GetEventsAction(mSessionManager);
+		getEventsAction.setActionListener(onEventsListener);
+		getEventsAction.setEventDecision(eventDecision);
+		getEventsAction.execute();
+	}
+
+	/**
+	 * Get events of specific entity.<br>
+	 * <br>
+	 * The entity can be one of:<br>
+	 * - <b>Profile</b>. It can be you, your friend or any other profile. To get
+	 * id of the profile: {@link Profile#getId()}<br>
+	 * - <b>Page</b>. Any page. To get the page id: {@link Page#getId()}<br>
+	 * - <b>Group</b>. Any group. To get the group id: {@link Group#getId()}<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_EVENTS}<br>
+	 * {@link Permission#FRIENDS_EVENTS}
+	 * 
+	 * @param entityId
+	 *            Profile, Page or Group.
+	 * @param eventDesicion
+	 *            The type of event: attending, maybe, declined.
+	 * @param onEventsListener
+	 *            The callback listener.
+	 */
+	public void getEvents(String entityId, EventDecision eventDecision, OnEventsListener onEventsListener) {
+		GetEventsAction getEventsAction = new GetEventsAction(mSessionManager);
+		getEventsAction.setActionListener(onEventsListener);
+		getEventsAction.setEventDecision(eventDecision);
+		getEventsAction.setTarget(entityId);
+		getEventsAction.execute();
 	}
 
 	/**
 	 * Get my friends from facebook.<br>
-	 * This method will return profile with next default properties depends on permissions you have:<br>
-	 * <em>id, name</em>
-	 * 
-	 * <br>
-	 * <br>
-	 * If you need additional or other friend properties like: <em>education, location and more</em>, then use
-	 * this method: {@link #getFriends(Properties, OnFriendsRequestListener)} <br>
+	 * This method will return profile with next default properties depends on
+	 * permissions you have: <b><em>id, name</em></b><br>
 	 * <br>
 	 * 
-	 * @param onFriendsRequestListener
+	 * If you need additional or other friend properties like:
+	 * <em>education, location and more</em>, then use this method:
+	 * {@link #getFriends(Properties, OnFriendsRequestListener)} <br>
+	 * <br>
+	 * 
+	 * @param onFriendsListener
+	 *            The callback listener.
 	 */
-	public void getFriends(final OnFriendsRequestListener onFriendsRequestListener)
-	{
-		getFriends(null, onFriendsRequestListener);
+	public void getFriends(OnFriendsListener onFriendsListener) {
+		getFriends(null, onFriendsListener);
 	}
 
 	/**
 	 * Get my friends from facebook by mentioning specific parameters. <br>
 	 * For example, if you need: <em>id, last_name, picture, birthday</em>
 	 * 
-	 * @param onFriendsRequestListener
-	 * @param properties The {@link Properties}. <br>
+	 * @param onFriendsListener
+	 *            The callback listener.
+	 * @param properties
+	 *            The {@link Properties}. <br>
 	 *            To create {@link Properties} instance use:
 	 * 
 	 *            <pre>
@@ -340,365 +431,313 @@ public class SimpleFacebook
 	 * pictureAttributes.setWidth(500);
 	 * 
 	 * // create properties
-	 * Properties properties = new Properties.Builder()
-	 * 	.add(Properties.ID)
-	 * 	.add(Properties.LAST_NAME)
-	 * 	.add(Properties.PICTURE, attributes)
-	 * 	.add(Properties.BIRTHDAY)
-	 * 	.build();
+	 * Properties properties = new Properties.Builder().add(Properties.ID).add(Properties.LAST_NAME).add(Properties.PICTURE, attributes).add(Properties.BIRTHDAY).build();
 	 * </pre>
 	 */
-	public void getFriends(Properties properties, final OnFriendsRequestListener onFriendsRequestListener)
-	{
-		// if we are logged in
-		if (isLogin())
-		{
-			// move these params to method call parameters
-			Session session = getOpenSession();
-			Bundle bundle = null;
-			if (properties != null)
-			{
-				bundle = properties.getBundle();
-			}
-			Request request = new Request(session, "me/friends", bundle, HttpMethod.GET, new Request.Callback()
-			{
-				@Override
-				public void onCompleted(Response response)
-				{
-					List<GraphUser> graphUsers = typedListFromResponse(response, GraphUser.class);
-
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("failed to get friends", error.getException());
-
-						// callback with 'exception'
-						if (onFriendsRequestListener != null)
-						{
-							onFriendsRequestListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onFriendsRequestListener != null)
-						{
-							List<Profile> friends = new ArrayList<Profile>(graphUsers.size());
-							for (GraphUser graphUser: graphUsers)
-							{
-								friends.add(Profile.create(graphUser));
-							}
-							onFriendsRequestListener.onComplete(friends);
-						}
-					}
-
-				}
-			});
-
-			RequestAsyncTask task = new RequestAsyncTask(request);
-			task.execute();
-
-			// callback with 'thinking'
-			if (onFriendsRequestListener != null)
-			{
-				onFriendsRequestListener.onThinking();
-			}
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
-
-			// callback with 'fail' due to not being logged
-			if (onFriendsRequestListener != null)
-			{
-				onFriendsRequestListener.onFail(reason);
-			}
-		}
+	public void getFriends(Properties properties, OnFriendsListener onFriendsListener) {
+		GetFriendsAction getFriendsAction = new GetFriendsAction(mSessionManager);
+		getFriendsAction.setProperties(properties);
+		getFriendsAction.setActionListener(onFriendsListener);
+		getFriendsAction.execute();
 	}
 
 	/**
-	 * Get albums
-	 * 
-	 * <b>Permission:</b><br>
-	 * {@link Permissions#USER_PHOTOS}
-	 */
-	public void getAlbums(final OnAlbumsRequestListener onAlbumsRequestListener)
-	{
-		// if we are logged in
-		if (isLogin())
-		{
-			// move these params to method call parameters
-			Session session = getOpenSession();
-			Bundle bundle = new Bundle();
-			bundle.putString("date_format", "U");
-			Request request = new Request(session, "me/albums", bundle, HttpMethod.GET, new Request.Callback()
-			{
-				@Override
-				public void onCompleted(Response response)
-				{
-					List<GraphObject> graphObjects = typedListFromResponse(response, GraphObject.class);
-
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("failed to get albums", error.getException());
-
-						// callback with 'exception'
-						if (onAlbumsRequestListener != null)
-						{
-							onAlbumsRequestListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onAlbumsRequestListener != null)
-						{
-							List<Album> albums = new ArrayList<Album>(graphObjects.size());
-							for (GraphObject graphObject: graphObjects)
-							{
-								Album album = Album.create(graphObject);
-								albums.add(album);
-							}
-							onAlbumsRequestListener.onComplete(albums);
-						}
-					}
-
-				}
-			});
-
-			RequestAsyncTask task = new RequestAsyncTask(request);
-			task.execute();
-
-			// callback with 'thinking'
-			if (onAlbumsRequestListener != null)
-			{
-				onAlbumsRequestListener.onThinking();
-			}
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
-
-			// callback with 'fail' due to not being logged
-			if (onAlbumsRequestListener != null)
-			{
-				onAlbumsRequestListener.onFail(reason);
-			}
-		}
-	}
-	
-	/**
-	 * Get check-ins of a user
-	 * 
-	 * @param userId The id of user' profiles
-	 * @param OnCheckinsRequestListener 
-	 */
-	public void getCheckins(String userId, final OnCheckinsRequestListener onCheckinsRequestListener)
-	{
-		// if we are logged in
-		if (isLogin())
-		{
-			// move these params to method call parameters
-			Session session = getOpenSession();
-			
-			Request request = new Request(session, userId+"/checkins", null, HttpMethod.GET, new Request.Callback()
-			{
-				@Override
-				public void onCompleted(Response response)
-				{
-					List<GraphObject> graphObjects = typedListFromResponse(response, GraphObject.class);
-
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("failed to get checkins", error.getException());
-
-						// callback with 'exception'
-						if (onCheckinsRequestListener != null)
-						{
-							onCheckinsRequestListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onCheckinsRequestListener != null)
-						{
-							List<Checkins> checkins = new ArrayList<Checkins>(graphObjects.size());
-							for (GraphObject graphObject: graphObjects)
-							{
-								checkins.add(Checkins.create(graphObject));
-							}
-							onCheckinsRequestListener.onComplete(checkins);
-						}
-					}
-
-				}
-			});
-
-			RequestAsyncTask task = new RequestAsyncTask(request);
-			task.execute();
-
-			// callback with 'thinking'
-			if (onCheckinsRequestListener != null)
-			{
-				onCheckinsRequestListener.onThinking();
-			}
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
-
-			// callback with 'fail' due to not being logged
-			if (onCheckinsRequestListener != null)
-			{
-				onCheckinsRequestListener.onFail(reason);
-			}
-		}
-	}
-
-	public void getAppRequests(final OnAppRequestsListener onAppRequestsListener)
-	{
-		// if we are logged in
-		if (isLogin())
-		{
-			Session session = getOpenSession();
-			Bundle bundle = null;
-			Request request = new Request(session, "me/apprequests", null, HttpMethod.GET, new Request.Callback()
-			{
-				@Override
-				public void onCompleted(Response response)
-				{
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("failed to get app requests", error.getException());
-
-						// callback with 'exception'
-						if (onAppRequestsListener != null)
-						{
-							onAppRequestsListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						GraphObject graphObject = response.getGraphObject();
-						if (graphObject != null)
-						{
-							JSONObject graphResponse = graphObject.getInnerJSONObject();
-							try
-							{
-								JSONArray result = graphResponse.getJSONArray("data");
-								if (onAppRequestsListener != null)
-								{
-									onAppRequestsListener.onComplete(result);
-								}
-							}
-							catch (JSONException e)
-							{
-								if (onAppRequestsListener != null)
-								{
-									onAppRequestsListener.onException(e);
-								}
-							}
-						}
-						else
-						{
-							// log
-							logError("The GraphObject in Response of getAppRequests has null value. Response=" + response.toString(), null);
-						}
-					}
-				}
-			});
-
-			RequestAsyncTask task = new RequestAsyncTask(request);
-			task.execute();
-
-			// callback with 'thinking'
-			if (onAppRequestsListener != null)
-			{
-				onAppRequestsListener.onThinking();
-			}
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
-
-			// callback with 'fail' due to not being logged in
-			if (onAppRequestsListener != null)
-			{
-				onAppRequestsListener.onFail(reason);
-			}
-		}
-	}
-
-	/**
-	 * 
-	 * Deletes an apprequest.<br>
+	 * Get my groups.<br>
 	 * <br>
 	 * 
-	 * @param inRequestId Input request id to be deleted. Note that it should have the form
-	 *            {USERID}_{REQUESTID} <code>String</code>
-	 * @param onDeleteRequestListener The listener for deletion action
-	 * @see https://developers.facebook.com/docs/android/app-link-requests/#step3
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_GROUPS}
+	 * 
+	 * @param onGroupsListener
+	 *            The callback listener.
 	 */
-	public void deleteRequest(String inRequestId, final OnDeleteRequestListener onDeleteRequestListener)
-	{
-		if (isLogin())
-		{
-			// Create a new request for an HTTP delete with the
-			// request ID as the Graph path.
-			Session session = getOpenSession();
-			Request request = new Request(session, inRequestId, null, HttpMethod.DELETE, new Request.Callback()
-			{
-				@Override
-				public void onCompleted(Response response)
-				{
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("failed to delete requests", error.getException());
+	public void getGroups(OnGroupsListener onGroupsListener) {
+		GetGroupsAction getGroupsAction = new GetGroupsAction(mSessionManager);
+		getGroupsAction.setActionListener(onGroupsListener);
+		getGroupsAction.execute();
+	}
 
-						// callback with 'exception'
-						if (onDeleteRequestListener != null)
-						{
-							onDeleteRequestListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onDeleteRequestListener != null)
-						{
-							onDeleteRequestListener.onComplete();
-						}
-					}
-				}
-			});
-			// Execute the request asynchronously.
-			Request.executeBatchAsync(request);
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
+	/**
+	 * Get groups that user belongs to.<br>
+	 * <br>
+	 * 
+	 * The entity can be:<br>
+	 * - <b>Profile</b>. It can be you, your friend or any other profile. To get
+	 * id of the profile: {@link Profile#getId()}<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_GROUPS}<br>
+	 * {@link Permission#FRIENDS_GROUPS}
+	 * 
+	 * @param entityId
+	 *            Profile
+	 * @param onGroupsListener
+	 *            The callback listener.
+	 */
+	public void getGroups(String entityId, OnGroupsListener onGroupsListener) {
+		GetGroupsAction getGroupsAction = new GetGroupsAction(mSessionManager);
+		getGroupsAction.setActionListener(onGroupsListener);
+		getGroupsAction.setTarget(entityId);
+		getGroupsAction.execute();
+	}
 
-			// callback with 'fail' due to not being logged in
-			if (onDeleteRequestListener != null)
-			{
-				onDeleteRequestListener.onFail(reason);
-			}
-		}
+	/**
+	 * Get likes of specific entity.<br>
+	 * <br>
+	 * The entity can be one of:<br>
+	 * - <b>Album</b>. Any album. To get the album id: {@link Album#getId()}<br>
+	 * - <b>Checkin</b>. Any checkin. To get the checkin id:
+	 * {@link Checkin#getId()}<br>
+	 * - <b>Comment</b>. Get all likes of the comment. To get comment id:
+	 * {@link Comment#getId()} <br>
+	 * - <b>Photo</b>. Any photo. To get the photo id: {@link Photo#getId()} <br>
+	 * - <b>Post</b>. Any post. To get the post id: {@link Post#getId()} <br>
+	 * - <b>Video</b>. Any video. To get the video id: {@link Video#getId()} <br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * No special permission is needed, except the permission you asked for
+	 * getting the entity itself. For example, if you want to get likes of
+	 * album, you need to have the {@link Permission#USER_PHOTOS} or
+	 * {@link Permission#FRIENDS_PHOTOS} for getting likes of this album.
+	 * 
+	 * @param entityId
+	 *            Album, Checkin, Comment, Link, Photo, Post or Video.
+	 * @param onCommentsListener
+	 *            The callback listener.
+	 */
+	public void getLikes(String entityId, OnLikesListener onLikesListener) {
+		GetLikesAction getLikesAction = new GetLikesAction(mSessionManager);
+		getLikesAction.setActionListener(onLikesListener);
+		getLikesAction.setTarget(entityId);
+		getLikesAction.execute();
+	}
+
+	/**
+	 * Get page by page id.
+	 * 
+	 * @param entityId
+	 *            The page id.
+	 * @param onPageListener
+	 *            The callback listener.
+	 */
+	public void getPage(String entityId, OnPageListener onPageListener) {
+		GetPageAction getPageAction = new GetPageAction(mSessionManager);
+		getPageAction.setActionListener(onPageListener);
+		getPageAction.setTarget(entityId);
+		getPageAction.execute();
+	}
+
+	/**
+	 * Get page by page id.
+	 * 
+	 * @param entityId
+	 *            The page id.
+	 * @param properties
+	 *            Properties you want to get.
+	 * @param onPageListener
+	 *            The callback listener.
+	 */
+	public void getPage(String entityId, Page.Properties properties, OnPageListener onPageListener) {
+		GetPageAction getPageAction = new GetPageAction(mSessionManager);
+		getPageAction.setActionListener(onPageListener);
+		getPageAction.setTarget(entityId);
+		getPageAction.setProperties(properties);
+		getPageAction.execute();
+	}
+
+	/**
+	 * Get my photos.
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_PHOTOS}
+	 * 
+	 * @param onPhotosListener
+	 *            The callback listener.
+	 */
+	public void getPhotos(OnPhotosListener onPhotosListener) {
+		GetPhotosAction getPhotosAction = new GetPhotosAction(mSessionManager);
+		getPhotosAction.setActionListener(onPhotosListener);
+		getPhotosAction.execute();
+	}
+
+	/**
+	 * Get photos of specific entity.<br>
+	 * <br>
+	 * The entity can be one of:<br>
+	 * - <b>Album</b>. Any album. To get the album id: {@link Album#getId()}<br>
+	 * - <b>Event</b>. Any event. To get the event id: {@link Event#getId()}<br>
+	 * - <b>Page</b>. Any page. To get page id: {@link Page#getId()} <br>
+	 * - <b>Profile</b>. Any profile. To get profile id: {@link Profile#getId()} <br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_PHOTOS}<br>
+	 * {@link Permission#FRIENDS_PHOTOS}
+	 * 
+	 * @param entityId
+	 *            Album, Event, Page, Profile
+	 * @param onPhotosListener
+	 *            The callback listener.
+	 */
+	public void getPhotos(String entityId, OnPhotosListener onPhotosListener) {
+		GetPhotosAction getPhotosAction = new GetPhotosAction(mSessionManager);
+		getPhotosAction.setActionListener(onPhotosListener);
+		getPhotosAction.setTarget(entityId);
+		getPhotosAction.execute();
+	}
+
+	/**
+	 * Get my profile from facebook.<br>
+	 * This method will return profile with next default properties depends on
+	 * permissions you have:<br>
+	 * <em>id, name, first_name, middle_name, last_name, gender, locale, languages, link, username, timezone, updated_time, verified, bio, birthday, education, email, 
+	 * hometown, location, political, favorite_athletes, favorite_teams, quotes, relationship_status, religion, website, work</em>
+	 * 
+	 * <br>
+	 * <br>
+	 * If you need additional or other profile properties like:
+	 * <em>age_range, picture and more</em>, then use this method:
+	 * {@link #getProfile(Properties, OnProfileRequestListener)} <br>
+	 * <br>
+	 * <b>Note:</b> If you need only few properties for your app, then it is
+	 * recommended <b>not</b> to use this method, since getting unnecessary
+	 * properties is time consuming task from facebook side.<br>
+	 * It is recommended in this case, to use
+	 * {@link #getProfile(Properties, OnProfileRequestListener)} and mention
+	 * only needed properties.
+	 * 
+	 * @param onProfileListener
+	 *            The callback listener.
+	 */
+	public void getProfile(OnProfileListener onProfileListener) {
+		getProfile(null, onProfileListener);
+	}
+
+	/**
+	 * Get my profile from facebook by mentioning specific parameters. <br>
+	 * For example, if you need: <em>square picture 500x500 pixels</em>
+	 * 
+	 * @param onProfileListener
+	 *            The callback listener.
+	 * @param properties
+	 *            The {@link Properties}. <br>
+	 *            To create {@link Properties} instance use:
+	 * 
+	 *            <pre>
+	 * // define the profile picture we want to get
+	 * PictureAttributes pictureAttributes = Attributes.createPictureAttributes();
+	 * pictureAttributes.setType(PictureType.SQUARE);
+	 * pictureAttributes.setHeight(500);
+	 * pictureAttributes.setWidth(500);
+	 * 
+	 * // create properties
+	 * Properties properties = new Properties.Builder().add(Properties.ID).add(Properties.FIRST_NAME).add(Properties.PICTURE, attributes).build();
+	 * </pre>
+	 */
+	public void getProfile(Profile.Properties properties, OnProfileListener onProfileListener) {
+		GetProfileAction getProfileAction = new GetProfileAction(mSessionManager);
+		getProfileAction.setProperties(properties);
+		getProfileAction.setActionListener(onProfileListener);
+		getProfileAction.execute();
+	}
+
+	/**
+	 * Get all my feeds on the wall. It includes: links, statuses, photos..
+	 * everything that appears on my wall.<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * No special permissions are needed for getting the public posts. If you
+	 * want to get more private posts, then you need
+	 * {@link Permission#READ_STREAM}
+	 * 
+	 * @param onPostsListener
+	 *            The callback listener.
+	 */
+	public void getPosts(OnPostsListener onPostsListener) {
+		GetPostsAction getPostsAction = new GetPostsAction(mSessionManager);
+		getPostsAction.setActionListener(onPostsListener);
+		getPostsAction.execute();
+	}
+
+	/**
+	 * Get all feeds on the wall of specific entity. It includes: links,
+	 * statuses, photos.. everything that appears on that wall.<br>
+	 * 
+	 * <br>
+	 * The entity can be one of:<br>
+	 * - <b>Group</b>. Any group. To get the group id: {@link Group#getId()}<br>
+	 * - <b>Event</b>. Any event. To get the event id: {@link Event#getId()}<br>
+	 * - <b>Page</b>. Any page. To get page id: {@link Page#getId()} <br>
+	 * - <b>Profile</b>. Any profile. To get profile id: {@link Profile#getId()} <br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * No special permissions are needed for getting the public posts. If you
+	 * want to get more private posts, then you need
+	 * {@link Permission#READ_STREAM}
+	 * 
+	 * @param entityId
+	 *            Event, Group, Page, Profile
+	 * @param onPostsListener
+	 *            The callback listener.
+	 */
+	public void getPosts(String entityId, OnPostsListener onPostsListener) {
+		getPosts(entityId, PostType.ALL, onPostsListener);
+	}
+
+	/**
+	 * Get posts of specific entity filtered by {@link PostType}.<br>
+	 * 
+	 * <br>
+	 * In case of:
+	 * 
+	 * <pre>
+	 * {@link PostType#ALL}
+	 * </pre>
+	 * 
+	 * the entity can be one of:<br>
+	 * - <b>Group</b>. Any group. To get the group id: {@link Group#getId()}<br>
+	 * - <b>Event</b>. Any event. To get the event id: {@link Event#getId()}<br>
+	 * - <b>Page</b>. Any page. To get page id: {@link Page#getId()} <br>
+	 * - <b>Profile</b>. Any profile. To get profile id: {@link Profile#getId()} <br>
+	 * <br>
+	 * ---------<br>
+	 * In case of:
+	 * 
+	 * <pre>
+	 * 	{@link PostType#LINKS} 
+	 * 	{@link PostType#POSTS}
+	 * 	{@link PostType#STATUSES}
+	 * 	{@link PostType#TAGGED}
+	 * </pre>
+	 * 
+	 * the entity can be one of:<br>
+	 * - <b>Page</b>. Any page. To get page id: {@link Page#getId()} <br>
+	 * - <b>Profile</b>. Any profile. To get profile id: {@link Profile#getId()} <br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * No special permissions are needed for getting the public posts. If you
+	 * want to get more private posts, then you need
+	 * {@link Permission#READ_STREAM}<br>
+	 * <br>
+	 * 
+	 * @param entityId
+	 *            Event, Group, Page, Profile
+	 * @param postType
+	 *            Filter all wall feeds and get posts that you need.
+	 * @param onPostsListener
+	 *            The callback listener.
+	 */
+	public void getPosts(String entityId, PostType postType, OnPostsListener onPostsListener) {
+		GetPostsAction getPostsAction = new GetPostsAction(mSessionManager);
+		getPostsAction.setActionListener(onPostsListener);
+		getPostsAction.setTarget(entityId);
+		getPostsAction.setPostType(postType);
+		getPostsAction.execute();
 	}
 
 	/**
@@ -706,188 +745,76 @@ public class SimpleFacebook
 	 * Gets scores using Scores API for games. <br>
 	 * <br>
 	 * 
-	 * 
-	 * @param onScoresRequestListener The listener for getting scores
+	 * @param onScoresListener
+	 *            The callback listener.
 	 * @see https://developers.facebook.com/docs/games/scores/
 	 */
-	public void getScores(final OnScoresRequestListener onScoresRequestListener)
-	{
-		// if we are logged in
-		if (isLogin())
-		{
-			Session session = getOpenSession();
-			Bundle bundle = null;
-			Request request = new Request(session, mConfiguration.getAppId() + "/scores", null, HttpMethod.GET, new Request.Callback()
-			{
-				@Override
-				public void onCompleted(Response response)
-				{
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("failed to get scores", error.getException());
+	public void getScores(OnScoresListener onScoresListener) {
+		GetScoresAction getScoresAction = new GetScoresAction(mSessionManager);
+		getScoresAction.setActionListener(onScoresListener);
+		getScoresAction.execute();
+	}
 
-						// callback with 'exception'
-						if (onScoresRequestListener != null)
-						{
-							onScoresRequestListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						GraphObject graphObject = response.getGraphObject();
-						if (graphObject != null)
-						{
-							JSONObject graphResponse = graphObject.getInnerJSONObject();
-							try
-							{
-								JSONArray result = graphResponse.getJSONArray("data");
-								if (onScoresRequestListener != null)
-								{
-									onScoresRequestListener.onComplete(result);
-								}
-							}
-							catch (JSONException e)
-							{
-								if (onScoresRequestListener != null)
-								{
-									onScoresRequestListener.onException(e);
-								}
-							}
-						}
-						else
-						{
-							// log
-							logError("The GraphObject in Response of getScores has null value. Response=" + response.toString(), null);
-						}
-					}
-				}
-			});
+	/**
+	 * Get my videos.<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_VIDEOS}
+	 * 
+	 * @param onVideosListener
+	 *            The callback listener.
+	 */
+	public void getVideos(OnVideosListener onVideosListener) {
+		GetVideosAction getVideosAction = new GetVideosAction(mSessionManager);
+		getVideosAction.setActionListener(onVideosListener);
+		getVideosAction.execute();
+	}
 
-			RequestAsyncTask task = new RequestAsyncTask(request);
-			task.execute();
-
-			// callback with 'thinking'
-			if (onScoresRequestListener != null)
-			{
-				onScoresRequestListener.onThinking();
-			}
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
-
-			// callback with 'fail' due to not being logged in
-			if (onScoresRequestListener != null)
-			{
-				onScoresRequestListener.onFail(reason);
-			}
-		}
+	/**
+	 * Get videos of specific entity.<br>
+	 * <br>
+	 * 
+	 * The entity can be one of:<br>
+	 * - <b>Event</b>. Any event. To get the event id: {@link Event#getId()}<br>
+	 * - <b>Page</b>. Any page. To get page id: {@link Page#getId()} <br>
+	 * - <b>Profile</b>. Any profile. To get profile id: {@link Profile#getId()} <br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#USER_VIDEOS}<br>
+	 * {@link Permission#FRIENDS_VIDEOS}
+	 * 
+	 * @param entityId
+	 *            Profile, Page, Event
+	 * @param onVideosListener
+	 *            The callback listener.
+	 */
+	public void getVideos(String entityId, OnVideosListener onVideosListener) {
+		GetVideosAction getVideosAction = new GetVideosAction(mSessionManager);
+		getVideosAction.setActionListener(onVideosListener);
+		getVideosAction.setTarget(entityId);
+		getVideosAction.execute();
 	}
 
 	/**
 	 * 
-	 * Posts a score using Scores API for games. If missing publish_actions permission, we do not ask again
-	 * for it.<br>
+	 * Posts a score using Scores API for games. If missing publish_actions
+	 * permission, we do not ask again for it.<br>
 	 * <br>
 	 * 
 	 * <b>Permission:</b><br>
-	 * {@link Permissions#PUBLISH_ACTION}
+	 * {@link Permission#PUBLISH_ACTION}
 	 * 
 	 * 
-	 * @param score Score to be posted. <code>int</code>
-	 * @param onPostScoreListener The listener for posting score
+	 * @param score
+	 *            Score to be posted. <code>int</code>
+	 * @param onPostScoreListener
+	 *            The listener for posting score
 	 * @see https://developers.facebook.com/docs/games/scores/
 	 */
-	public void postScore(int score, final OnPostScoreListener onPostScoreListener)
-	{
-		if (isLogin())
-		{
-			// if we defined the publish permission
-			if (mConfiguration.getPublishPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
-			{
-				// callback with 'thinking'
-				if (onPostScoreListener != null)
-				{
-					onPostScoreListener.onThinking();
-				}
-
-				/*
-				 * Check if session to facebook has 'publish_action' permission. If not, we will return fail,
-				 * client app may try to ask for permission later (not to annoy users).
-				 */
-				if (!getOpenSessionPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
-				{
-					String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
-					logError(reason, null);
-
-					// callback with 'fail' due to not being logged in
-					if (onPostScoreListener != null)
-					{
-						onPostScoreListener.onFail(reason);
-					}
-					return;
-				}
-			}
-			else
-			{
-				String reason = Errors.getError(ErrorMsg.PERMISSIONS_PUBLISH);
-				logError(reason, null);
-
-				// callback with 'fail' due to not being logged in
-				if (onPostScoreListener != null)
-				{
-					onPostScoreListener.onFail(reason);
-				}
-				return;
-			}
-
-			Bundle param = new Bundle();
-			param.putInt("score", score);
-			Request request = new Request(getOpenSession(), "me/scores", param, HttpMethod.POST, new Request.Callback()
-			{
-				@Override
-				public void onCompleted(Response response)
-				{
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("Failed to publish score", error.getException());
-
-						// callback with 'exception'
-						if (onPostScoreListener != null)
-						{
-							onPostScoreListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onPostScoreListener != null)
-						{
-							onPostScoreListener.onComplete();
-						}
-					}
-				}
-			});
-
-			RequestAsyncTask task = new RequestAsyncTask(request);
-			task.execute();
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
-
-			// callback with 'fail' due to not being logged in
-			if (onPostScoreListener != null)
-			{
-				onPostScoreListener.onFail(reason);
-			}
-		}
+	public void publish(Score score, OnPublishListener onPublishListener) {
+		publish((Publishable) score, "me", onPublishListener);
 	}
 
 	/**
@@ -896,83 +823,63 @@ public class SimpleFacebook
 	 * <br>
 	 * 
 	 * <b>Permission:</b><br>
-	 * {@link Permissions#PUBLISH_ACTION}
+	 * {@link Permission#PUBLISH_ACTION}
 	 * 
-	 * @param feed The feed to publish. Use {@link Feed.Builder} to create a new <code>Feed</code>
-	 * @param onPublishListener The listener for publishing action
-	 * @see https://developers.facebook.com/docs/howtos/androidsdk/3.0/publish-to-feed/
+	 * @param feed
+	 *            The feed to publish. Use {@link Feed.Builder} to create a new
+	 *            <code>Feed</code>
+	 * @param onPublishListener
+	 *            The listener for publishing action
+	 * @see https
+	 *      ://developers.facebook.com/docs/howtos/androidsdk/3.0/publish-to
+	 *      -feed/
 	 */
-	public void publish(final Feed feed, final OnPublishListener onPublishListener)
-	{
-		// if we are logged in
-		if (isLogin())
-		{
-			// if we defined the publish permission
-			if (mConfiguration.getPublishPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
-			{
-				// callback with 'thinking'
-				if (onPublishListener != null)
-				{
-					onPublishListener.onThinking();
-				}
+	public void publish(Feed feed, OnPublishListener onPublishListener) {
+		publish((Publishable) feed, "me", onPublishListener);
+	}
 
-				/*
-				 * Check if session to facebook has 'publish_action' permission. If not, we will ask user for
-				 * this permission.
-				 */
-				if (!getOpenSessionPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
-				{
-					mSessionStatusCallback.mOnReopenSessionListener = new OnReopenSessionListener()
-					{
-						@Override
-						public void onSuccess()
-						{
-							publishImpl(feed, onPublishListener);
-						}
-
-						@Override
-						public void onNotAcceptingPermissions()
-						{
-							// this fail can happen when user doesn't accept the publish permissions
-							String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
-							logError(reason, null);
-							if (onPublishListener != null)
-							{
-								onPublishListener.onFail(reason);
-							}
-						}
-					};
-
-					// extend publish permissions automatically
-					extendPublishPermissions();
-				}
-				else
-				{
-					publishImpl(feed, onPublishListener);
-				}
-			}
-			else
-			{
-				String reason = Errors.getError(ErrorMsg.PERMISSIONS_PUBLISH, Permissions.PUBLISH_ACTION.getValue());
-				logError(reason, null);
-
-				// callback with 'fail' due to insufficient permissions
-				if (onPublishListener != null)
-				{
-					onPublishListener.onFail(reason);
-				}
-			}
+	/**
+	 * Share to feed by using dialog or do it silently without dialog. <br>
+	 * If you use dialog for sharing, you don't have to configure
+	 * {@link Permission#PUBLISH_ACTION} since user does the share by himself.<br>
+	 * <br>
+	 * <b>Important:</b><br>
+	 * By setting <code>withDialog=true</code> the default implementation will
+	 * try to use a native facebook dialog. If option of native dialog will not
+	 * succeed, then a web facebook dialog will be used.<br>
+	 * <br>
+	 * 
+	 * For having the native dialog, you must add to your <b>manifest.xml</b>
+	 * 'app_id' meta value:
+	 * 
+	 * <pre>
+	 * {@code <}meta-data
+	 *      android:name="com.facebook.sdk.ApplicationId"
+	 *      android:value="@string/app_id" /{@code >}
+	 * </pre>
+	 * 
+	 * And in your <b>string.xml</b> add your app_id. For example:
+	 * 
+	 * <pre>
+	 * {@code <}string name="app_id"{@code >}625994234086470{@code <}/string{@code >}
+	 * </pre>
+	 * 
+	 * @param feed
+	 *            The feed to post
+	 * @param withDialog
+	 *            Set <code>True</code> if you want to use dialog.
+	 * @param onPublishListener
+	 */
+	public void publish(Feed feed, boolean withDialog, OnPublishListener onPublishListener) {
+		if (!withDialog) {
+			// make it silently
+			publish(feed, onPublishListener);
 		}
-		else
-		{
-			// callback with 'fail' due to not being logged
-			if (onPublishListener != null)
-			{
-				String reason = Errors.getError(ErrorMsg.LOGIN);
-				logError(reason, null);
-
-				onPublishListener.onFail(reason);
-			}
+		else {
+			PublishFeedDialogAction publishFeedDialogAction = new PublishFeedDialogAction(mSessionManager);
+			publishFeedDialogAction.setFeed(feed);
+			publishFeedDialogAction.setOnPublishListener(onPublishListener);
+			publishFeedDialogAction.execute();
 		}
 	}
 
@@ -981,178 +888,42 @@ public class SimpleFacebook
 	 * <br>
 	 * 
 	 * <b>Permission:</b><br>
-	 * {@link Permissions#PUBLISH_ACTION}
+	 * {@link Permission#PUBLISH_ACTION}
 	 * 
-	 * @param story
+	 * @param openGraph
 	 * @param onPublishListener
 	 */
-	public void publish(final Story story, final OnPublishListener onPublishListener)
-	{
-		if (isLogin())
-		{
-
-			// if we defined the publish permission
-			if (mConfiguration.getPublishPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
-			{
-				// callback with 'thinking'
-				if (onPublishListener != null)
-				{
-					onPublishListener.onThinking();
-				}
-
-				/*
-				 * Check if session to facebook has 'publish_action' permission. If not, we will ask user for
-				 * this permission.
-				 */
-				if (!getOpenSessionPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
-				{
-					mSessionStatusCallback.mOnReopenSessionListener = new OnReopenSessionListener()
-					{
-						@Override
-						public void onSuccess()
-						{
-							publishImpl(story, onPublishListener);
-						}
-
-						@Override
-						public void onNotAcceptingPermissions()
-						{
-							// this fail can happen when user doesn't accept the publish permissions
-							String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
-							logError(reason, null);
-
-							if (onPublishListener != null)
-							{
-								onPublishListener.onFail(reason);
-							}
-						}
-					};
-
-					// extend publish permissions automatically
-					extendPublishPermissions();
-				}
-				else
-				{
-					publishImpl(story, onPublishListener);
-				}
-			}
-			else
-			{
-				// callback with 'fail' due to insufficient permissions
-				if (onPublishListener != null)
-				{
-					String reason = Errors.getError(ErrorMsg.PERMISSIONS_PUBLISH, Permissions.PUBLISH_ACTION.getValue());
-					logError(reason, null);
-
-					onPublishListener.onFail(reason);
-				}
-			}
-		}
-		else
-		{
-			// callback with 'fail' due to not being logged
-			if (onPublishListener != null)
-			{
-				String reason = Errors.getError(ErrorMsg.LOGIN);
-				logError(reason, null);
-
-				onPublishListener.onFail(reason);
-			}
-		}
+	public void publish(Story story, OnPublishListener onPublishListener) {
+		publish((Publishable) story, "me", onPublishListener);
 	}
 
 	/**
-	 * Publish photo to specific album. You can use {@link #getAlbums(OnAlbumsRequestListener)} to retrieve
-	 * all user's albums.<br>
+	 * Publish photo to specific album. You can use
+	 * {@link #getAlbums(OnAlbumsRequestListener)} to retrieve all user's
+	 * albums.<br>
 	 * <br>
 	 * 
 	 * <b>Permission:</b><br>
-	 * {@link Permissions#PUBLISH_STREAM}<br>
+	 * {@link Permission#PUBLISH_STREAM}<br>
 	 * <br>
 	 * 
 	 * <b>Important:</b><br>
 	 * - The user must own the album<br>
-	 * - The album should not be full (Max: 200 photos). Check it by {@link Album#getCount()}<br>
+	 * - The album should not be full (Max: 200 photos). Check it by
+	 * {@link Album#getCount()}<br>
 	 * - The app can add photos to the album<br>
-	 * - The privacy setting of the app should be at minimum as the privacy setting of the album (
-	 * {@link Album#getPrivacy()}
+	 * - The privacy setting of the app should be at minimum as the privacy
+	 * setting of the album ( {@link Album#getPrivacy()}
 	 * 
-	 * @param photo The photo to upload
-	 * @param albumId The album to which the photo should be uploaded
-	 * @param onPublishListener The callback listener
+	 * @param photo
+	 *            The photo to upload
+	 * @param albumId
+	 *            The album to which the photo should be uploaded
+	 * @param onPublishListener
+	 *            The callback listener
 	 */
-	public void publish(final Photo photo, final String albumId, final OnPublishListener onPublishListener)
-	{
-		if (isLogin())
-		{
-			// if we defined the publish permission
-			if (mConfiguration.getPublishPermissions().contains(Permissions.PUBLISH_STREAM.getValue()))
-			{
-				// callback with 'thinking'
-				if (onPublishListener != null)
-				{
-					onPublishListener.onThinking();
-				}
-
-				/*
-				 * Check if session to facebook has 'publish_action' permission. If not, we will ask user for
-				 * this permission.
-				 */
-				if (!getOpenSessionPermissions().contains(Permissions.PUBLISH_STREAM.getValue()))
-				{
-					mSessionStatusCallback.mOnReopenSessionListener = new OnReopenSessionListener()
-					{
-						@Override
-						public void onSuccess()
-						{
-							publishImpl(photo, albumId, onPublishListener);
-						}
-
-						@Override
-						public void onNotAcceptingPermissions()
-						{
-							// this fail can happen when user doesn't accept the publish permissions
-							String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
-							logError(reason, null);
-
-							if (onPublishListener != null)
-							{
-								onPublishListener.onFail(reason);
-							}
-						}
-					};
-
-					// extend publish permissions automatically
-					extendPublishPermissions();
-				}
-				else
-				{
-					publishImpl(photo, albumId, onPublishListener);
-				}
-			}
-			else
-			{
-				// callback with 'fail' due to insufficient permissions
-				if (onPublishListener != null)
-				{
-					String reason = Errors.getError(ErrorMsg.PERMISSIONS_PUBLISH, Permissions.PUBLISH_STREAM.getValue());
-					logError(reason, null);
-
-					onPublishListener.onFail(reason);
-				}
-			}
-		}
-		else
-		{
-			// callback with 'fail' due to not being logged
-			if (onPublishListener != null)
-			{
-				String reason = Errors.getError(ErrorMsg.LOGIN);
-				logError(reason, null);
-
-				onPublishListener.onFail(reason);
-			}
-		}
+	public void publish(Photo photo, String albumId, OnPublishListener onPublishListener) {
+		publish((Publishable) photo, albumId, onPublishListener);
 	}
 
 	/**
@@ -1160,1191 +931,232 @@ public class SimpleFacebook
 	 * <br>
 	 * 
 	 * <b>Permission:</b><br>
-	 * {@link Permissions#PUBLISH_STREAM}<br>
+	 * {@link Permission#PUBLISH_STREAM}<br>
 	 * <br>
 	 * 
 	 * <b>Important:</b><br>
-	 * - The album should not be full (Max: 200 photos). Check it by {@link Album#getCount()}<br>
+	 * - The album should not be full (Max: 200 photos). Check it by
+	 * {@link Album#getCount()}<br>
 	 * {@link Album#getPrivacy()}
 	 * 
-	 * @param photo The photo to upload
-	 * @param onPublishListener The callback listener
+	 * @param photo
+	 *            The photo to upload
+	 * @param onPublishListener
+	 *            The callback listener
 	 */
-	public void publish(final Photo photo, final OnPublishListener onPublishListener)
-	{
-		publish(photo, "me", onPublishListener);
+	public void publish(Photo photo, OnPublishListener onPublishListener) {
+		publish((Publishable) photo, "me", onPublishListener);
 	}
 
 	/**
 	 * Publish video to "Videos" album. <br>
 	 * 
 	 * <b>Permission:</b><br>
-	 * {@link Permissions#PUBLISH_STREAM}<br>
+	 * {@link Permission#PUBLISH_STREAM}<br>
 	 * <br>
 	 * 
-	 * @param video The video to upload
-	 * @param onPublishListener The callback listener
+	 * @param video
+	 *            The video to upload
+	 * @param onPublishListener
+	 *            The callback listener
 	 */
-	public void publish(final Video video, final OnPublishListener onPublishListener)
-	{
-		if (isLogin())
-		{
-			// if we defined the publish permission
-			if (mConfiguration.getPublishPermissions().contains(Permissions.PUBLISH_STREAM.getValue()))
-			{
-				// callback with 'thinking'
-				if (onPublishListener != null)
-				{
-					onPublishListener.onThinking();
-				}
+	public void publish(Video video, OnPublishListener onPublishListener) {
+		publish((Publishable) video, "me", onPublishListener);
+	}
 
-				/*
-				 * Check if session to facebook has 'publish_action' permission. If not, we will ask user for
-				 * this permission.
-				 */
-				if (!getOpenSessionPermissions().contains(Permissions.PUBLISH_STREAM.getValue()))
-				{
-					mSessionStatusCallback.mOnReopenSessionListener = new OnReopenSessionListener()
-					{
-						@Override
-						public void onSuccess()
-						{
-							publishImpl(video, onPublishListener);
-						}
-
-						@Override
-						public void onNotAcceptingPermissions()
-						{
-							// this fail can happen when user doesn't accept the publish permissions
-							String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
-							logError(reason, null);
-
-							if (onPublishListener != null)
-							{
-								onPublishListener.onFail(reason);
-							}
-						}
-					};
-
-					// extend publish permissions automatically
-					extendPublishPermissions();
-				}
-				else
-				{
-					publishImpl(video, onPublishListener);
-				}
-			}
-			else
-			{
-				// callback with 'fail' due to insufficient permissions
-				if (onPublishListener != null)
-				{
-					String reason = Errors.getError(ErrorMsg.PERMISSIONS_PUBLISH, Permissions.PUBLISH_STREAM.getValue());
-					logError(reason, null);
-
-					onPublishListener.onFail(reason);
-				}
-			}
-		}
-		else
-		{
-			// callback with 'fail' due to not being logged
-			if (onPublishListener != null)
-			{
-				String reason = Errors.getError(ErrorMsg.LOGIN);
-				logError(reason, null);
-
-				onPublishListener.onFail(reason);
-			}
-		}
+	/**
+	 * Publish any publishable entity
+	 * 
+	 * @param publishable
+	 * @param onPublishListener
+	 */
+	public void publish(Publishable publishable, String target, OnPublishListener onPublishListener) {
+		PublishAction publishAction = new PublishAction(mSessionManager);
+		publishAction.setPublishable(publishable);
+		publishAction.setTarget(target);
+		publishAction.setOnPublishListener(onPublishListener);
+		publishAction.execute();
 	}
 
 	/**
 	 * Open invite dialog and can add multiple friends
 	 * 
-	 * @param message The message inside the dialog. It could be <code>null</code>
-	 * @param onInviteListener The listener. It could be <code>null</code>
+	 * @param message
+	 *            (Optional) The message inside the dialog. It could be
+	 *            <code>null</code>
+	 * @param data
+	 *            (Optional) The data you want to send within the request. It
+	 *            could be <code>null</code>
+	 * @param onInviteListener
+	 *            The listener. It could be <code>null</code>
 	 */
-	public void invite(String message, final OnInviteListener onInviteListener)
-	{
-		if (isLogin())
-		{
-
-			Bundle params = new Bundle();
-			params.putString("message", message);
-			openInviteDialog(mActivity, params, onInviteListener);
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
-
-			onInviteListener.onFail(reason);
-		}
+	public void invite(String message, final OnInviteListener onInviteListener, String data) {
+		InviteAction inviteAction = new InviteAction(mSessionManager);
+		inviteAction.setMessage(message);
+		inviteAction.setData(data);
+		inviteAction.setOnInviteListener(onInviteListener);
+		inviteAction.execute();
 	}
 
 	/**
 	 * Open invite dialog and invite only specific friend
 	 * 
-	 * @param to The id of the friend profile
-	 * @param message The message inside the dialog. It could be <code>null</code>
-	 * @param onInviteListener The listener. It could be <code>null</code>
+	 * @param to
+	 *            The id of the friend profile
+	 * @param message
+	 *            The message inside the dialog. It could be <code>null</code>
+	 * @param data
+	 *            (Optional) The data you want to send within the request. It
+	 *            could be <code>null</code>
+	 * @param onInviteListener
+	 *            The listener. It could be <code>null</code>
 	 */
-	public void invite(String to, String message, final OnInviteListener onInviteListener)
-	{
-		if (isLogin())
-		{
-
-			Bundle params = new Bundle();
-			if (message != null)
-			{
-				params.putString("message", message);
-			}
-			params.putString("to", to);
-			openInviteDialog(mActivity, params, onInviteListener);
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
-
-			onInviteListener.onFail(reason);
-		}
+	public void invite(String to, String message, final OnInviteListener onInviteListener, String data) {
+		InviteAction inviteAction = new InviteAction(mSessionManager);
+		inviteAction.setTo(to);
+		inviteAction.setMessage(message);
+		inviteAction.setData(data);
+		inviteAction.setOnInviteListener(onInviteListener);
+		inviteAction.execute();
 	}
 
 	/**
 	 * Open invite dialog and invite several specific friends
 	 * 
-	 * @param suggestedFriends The ids of friends' profiles
-	 * @param message The message inside the dialog. It could be <code>null</code>
-	 * @param onInviteListener The error listener. It could be <code>null</code>
+	 * @param suggestedFriends
+	 *            The ids of friends' profiles
+	 * @param message
+	 *            The message inside the dialog. It could be <code>null</code>
+	 * @param data
+	 *            (Optional) The data you want to send within the request. It
+	 *            could be <code>null</code>
+	 * @param onInviteListener
+	 *            The error listener. It could be <code>null</code>
 	 */
-	public void invite(String[] suggestedFriends, String message, final OnInviteListener onInviteListener)
-	{
-		if (isLogin())
-		{
-
-			Bundle params = new Bundle();
-			if (message != null)
-			{
-				params.putString("message", message);
-			}
-			params.putString("suggestions", TextUtils.join(",", suggestedFriends));
-			openInviteDialog(mActivity, params, onInviteListener);
-		}
-		else
-		{
-			String reason = Errors.getError(ErrorMsg.LOGIN);
-			logError(reason, null);
-
-			onInviteListener.onFail(reason);
-		}
+	public void invite(String[] suggestedFriends, String message, final OnInviteListener onInviteListener, String data) {
+		InviteAction inviteAction = new InviteAction(mSessionManager);
+		inviteAction.setSuggestions(suggestedFriends);
+		inviteAction.setMessage(message);
+		inviteAction.setData(data);
+		inviteAction.setOnInviteListener(onInviteListener);
+		inviteAction.execute();
 	}
 
 	/**
 	 * 
-	 * Requests {@link Permissions#PUBLISH_ACTION} and nothing else. Useful when you just want to request the
-	 * action and won't be publishing at the time, but still need the updated <b>access token</b> with the
-	 * permissions (possibly to pass back to your backend). You must add {@link Permissions#PUBLISH_ACTION} to
-	 * your SimpleFacebook configuration before calling this.
+	 * Deletes an apprequest.<br>
+	 * <br>
 	 * 
+	 * @param inRequestId
+	 *            Input request id to be deleted. Note that it should have the
+	 *            form {USERID}_{REQUESTID} <code>String</code>
+	 * @param onDeleteListener
+	 *            The listener for deletion action
+	 * @see https
+	 *      ://developers.facebook.com/docs/android/app-link-requests/#step3
+	 */
+	public void deleteRequest(String inRequestId, final OnDeleteListener onDeleteListener) {
+		DeleteRequestAction deleteRequestAction = new DeleteRequestAction(mSessionManager);
+		deleteRequestAction.setRequestId(inRequestId);
+		deleteRequestAction.setOnDeleteListener(onDeleteListener);
+		deleteRequestAction.execute();
+	}
+
+	/**
+	 * 
+	 * Requests any new permission in a runtime. <br>
+	 * <br>
+	 * Useful when you just want to request the action and won't be publishing
+	 * at the time, but still need the updated <b>access token</b> with the
+	 * permissions (possibly to pass back to your backend).
+	 * 
+	 * <br>
 	 * <b>Must be logged to use.</b>
 	 * 
-	 * @param onPermissionListener The listener for the request permission action
+	 * @param permissions
+	 *            New permissions you want to have. This array can include READ
+	 *            and PUBLISH permissions in the same time. Just ask what you
+	 *            need.<br>
+	 * <br>
+	 * @param showPublish
+	 *            This flag is relevant only in cases when new permissions
+	 *            include PUBLISH permission. Then you can decide if you want
+	 *            the dialog of requesting publish permission to appear <b>right
+	 *            away</b> or <b>later</b>, at first time of real publish
+	 *            action.<br>
+	 * <br>
+	 * @param onNewPermissionsListener
+	 *            The listener for the requesting new permission action.
 	 */
-	public void requestPublish(final OnPermissionListener onPermissionListener)
-	{
-		if (isLogin())
-		{
-			if (mConfiguration.getPublishPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
-			{
-				if (onPermissionListener != null)
-				{
-					onPermissionListener.onThinking();
-				}
-				/*
-				 * Check if session to facebook has 'publish_action' permission. If not, we will ask user for
-				 * this permission.
-				 */
-				if (!getOpenSessionPermissions().contains(Permissions.PUBLISH_ACTION.getValue()))
-				{
-					mSessionStatusCallback.mOnReopenSessionListener = new OnReopenSessionListener()
-					{
-						@Override
-						public void onSuccess()
-						{
-							if (onPermissionListener != null)
-							{
-								onPermissionListener.onSuccess(getAccessToken());
-							}
-						}
-
-						@Override
-						public void onNotAcceptingPermissions()
-						{
-							// this fail can happen when user doesn't accept the publish permissions
-							String reason = Errors.getError(ErrorMsg.CANCEL_PERMISSIONS_PUBLISH, String.valueOf(mConfiguration.getPublishPermissions()));
-							logError(reason, null);
-							if (onPermissionListener != null)
-							{
-								onPermissionListener.onFail(reason);
-							}
-						}
-					};
-					// extend publish permissions automatically
-					extendPublishPermissions();
-				}
-				else
-				{
-					// We already have the permission.
-					if (onPermissionListener != null)
-					{
-						onPermissionListener.onSuccess(getAccessToken());
-					}
-				}
-			}
-		}
-		else
-		{
-			// callback with 'fail' due to not being logged
-			if (onPermissionListener != null)
-			{
-				String reason = Errors.getError(ErrorMsg.LOGIN);
-				logError(reason, null);
-				onPermissionListener.onFail(reason);
-			}
-		}
+	public void requestNewPermissions(Permission[] permissions, boolean showPublish, OnNewPermissionsListener onNewPermissionsListener) {
+		mSessionManager.requestNewPermissions(permissions, showPublish, onNewPermissionsListener);
 	}
 
 	/**
-	 * Call this inside your activity in {@link Activity#onActivityResult} method
+	 * Get the list of all granted permissions. <br>
+	 * Use {@link Permission#fromValue(String)} to get the {@link Permission}
+	 * object from string in this list.
+	 * 
+	 * @return List of granted permissions
+	 */
+	public List<String> getGrantedPermissions() {
+		return mSessionManager.getActiveSessionPermissions();
+	}
+
+	/**
+	 * @return <code>True</code> if all permissions were granted by the user,
+	 *         otherwise return <code>False</code>
+	 */
+	public boolean isAllPermissionsGranted() {
+		List<String> grantedPermissions = getGrantedPermissions();
+		List<String> readPermissions = new ArrayList<String>(mConfiguration.getReadPermissions());
+		List<String> publishPermissions = new ArrayList<String>(mConfiguration.getPublishPermissions());
+		readPermissions.removeAll(grantedPermissions);
+		publishPermissions.removeAll(grantedPermissions);
+		if (readPermissions.size() > 0 || publishPermissions.size() > 0) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Get the current 'Active' session. <br>
+	 * 
+	 * @return Active session or null.
+	 */
+	public Session getSession() {
+		return mSessionManager.getActiveSession();
+	}
+
+	/**
+	 * Install report to facebook. Notifies the events system that the app has
+	 * launched & logs an activatedApp event. Should be called whenever your app
+	 * becomes active, typically in the onResume() method of each long-running
+	 * Activity of your app.
+	 */
+	public void eventAppLaunched() {
+		AppEventsLogger.activateApp(mActivity.getApplicationContext(), mConfiguration.getAppId());
+	}
+
+	/**
+	 * Call this inside your activity in {@link Activity#onActivityResult}
+	 * method
 	 * 
 	 * @param activity
 	 * @param requestCode
 	 * @param resultCode
 	 * @param data
-	 * @return
 	 */
-	public boolean onActivityResult(Activity activity, int requestCode, int resultCode, Intent data)
-	{
-		if (Session.getActiveSession() != null)
-		{
-			return Session.getActiveSession().onActivityResult(activity, requestCode, resultCode, data);
-		}
-		else
-		{
-			return false;
-		}
-	}
-
-	/**
-	 * Indicate if you are logged in or not.
-	 * 
-	 * @return <code>True</code> if you is logged in, otherwise return <code>False</code>
-	 */
-	public boolean isLogin()
-	{
-		Session session = Session.getActiveSession();
-		if (session == null)
-		{
-			if (mActivity == null)
-			{
-				// You can't create a session if the activity/context hasn't been initialized
-				// This is now possible because the library can be started without context.
-				return false;
-			}
-			session = new Session.Builder(mActivity.getApplicationContext())
-				.setApplicationId(mConfiguration.getAppId())
-				.build();
-			Session.setActiveSession(session);
-		}
-		if (session.isOpened())
-		{
-			// mSessionNeedsToReopen = false;
-			return true;
-		}
-
-		/*
-		 * Check if we can reload the session when it will be necessary. We won't do it now.
-		 */
-		if (session.getState().equals(SessionState.CREATED_TOKEN_LOADED))
-		{
-			List<String> permissions = session.getPermissions();
-			if (permissions.containsAll(mConfiguration.getReadPermissions()))
-			{
-				reopenSession();
-				return true;
-			}
-			else
-			{
-				return false;
-			}
-		}
-		else
-		{
-			return false;
-		}
-	}
-
-	/**
-	 * Get access token of open session
-	 * 
-	 * @return a {@link String} containing the Access Token of the current {@link Session} or null if no
-	 *         session.
-	 */
-	public String getAccessToken()
-	{
-		Session session = getOpenSession();
-		if (session != null)
-		{
-			return session.getAccessToken();
-		}
-		return null;
-	}
-
-	/**
-	 * Get open session
-	 * 
-	 * @return the open session
-	 */
-	public static Session getOpenSession()
-	{
-		return Session.getActiveSession();
+	public boolean onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+		return mSessionManager.onActivityResult(activity, requestCode, resultCode, data);
 	}
 
 	/**
 	 * Clean all references like Activity to prevent memory leaks
 	 */
-	public void clean()
-	{
+	public void clean() {
 		mActivity = null;
-	}
-
-	private static void publishImpl(Feed feed, final OnPublishListener onPublishListener)
-	{
-		Session session = getOpenSession();
-		Request request = new Request(session, "me/feed", feed.getBundle(), HttpMethod.POST, new Request.Callback()
-		{
-			@Override
-			public void onCompleted(Response response)
-			{
-				GraphObject graphObject = response.getGraphObject();
-				if (graphObject != null)
-				{
-					JSONObject graphResponse = graphObject.getInnerJSONObject();
-					String postId = null;
-					try
-					{
-						postId = graphResponse.getString("id");
-					}
-					catch (JSONException e)
-					{
-						// log
-						logError("JSON error", e);
-					}
-
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("Failed to publish", error.getException());
-
-						// callback with 'exception'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onComplete(postId);
-						}
-					}
-				}
-				else
-				{
-					// log
-					logError("The GraphObject in Response of publish action has null value. Response=" + response.toString(), null);
-					
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("Failed to publish", error.getException());
-
-						// callback with 'exception'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'fail'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onFail("Failed to publish");
-						}
-					}
-				}
-			}
-		});
-
-		RequestAsyncTask task = new RequestAsyncTask(request);
-		task.execute();
-	}
-
-	private static void publishImpl(Story story, final OnPublishListener onPublishListener)
-	{
-		Session session = getOpenSession();
-		String appNamespace = mConfiguration.getNamespace();
-
-		Request request = new Request(session, story.getGraphPath(appNamespace), story.getActionBundle(), HttpMethod.POST, new Request.Callback()
-		{
-			@Override
-			public void onCompleted(Response response)
-			{
-				GraphObject graphObject = response.getGraphObject();
-				if (graphObject != null)
-				{
-					JSONObject graphResponse = graphObject.getInnerJSONObject();
-					String postId = null;
-					try
-					{
-						postId = graphResponse.getString("id");
-					}
-					catch (JSONException e)
-					{
-						// log
-						logError("JSON error", e);
-					}
-
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("Failed to publish", error.getException());
-
-						// callback with 'exception'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onComplete(postId);
-						}
-					}
-				}
-				else
-				{
-					// log
-					logError("The GraphObject in Response of publish action has null value. Response=" + response.toString(), null);
-					
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("Failed to publish", error.getException());
-
-						// callback with 'exception'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'fail'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onFail("Failed to publish");
-						}
-					}
-				}
-			}
-		});
-
-		RequestAsyncTask task = new RequestAsyncTask(request);
-		task.execute();
-	}
-
-	private static void publishImpl(Photo photo, String albumId, final OnPublishListener onPublishListener)
-	{
-		Session session = getOpenSession();
-		Request request = new Request(session, albumId + "/photos", photo.getBundle(), HttpMethod.POST, new Request.Callback()
-		{
-			@Override
-			public void onCompleted(Response response)
-			{
-				GraphObject graphObject = response.getGraphObject();
-				if (graphObject != null)
-				{
-					JSONObject graphResponse = graphObject.getInnerJSONObject();
-					String postId = null;
-					try
-					{
-						postId = graphResponse.getString("id");
-					}
-					catch (JSONException e)
-					{
-						// log
-						logError("JSON error", e);
-					}
-
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("Failed to publish", error.getException());
-
-						// callback with 'exception'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onComplete(postId);
-						}
-					}
-				}
-				else
-				{
-					// log
-					logError("The GraphObject in Response of publish action has null value. Response=" + response.toString(), null);
-					
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("Failed to publish", error.getException());
-
-						// callback with 'exception'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'fail'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onFail("Failed to publish");
-						}
-					}
-				}
-			}
-		});
-
-		RequestAsyncTask task = new RequestAsyncTask(request);
-		task.execute();
-	}
-
-	private static void publishImpl(Video video, final OnPublishListener onPublishListener)
-	{
-		Session session = getOpenSession();
-		Request request = new Request(session, "me/videos", video.getBundle(), HttpMethod.POST, new Request.Callback()
-		{
-			@Override
-			public void onCompleted(Response response)
-			{
-				GraphObject graphObject = response.getGraphObject();
-				if (graphObject != null)
-				{
-					JSONObject graphResponse = graphObject.getInnerJSONObject();
-					String postId = null;
-					try
-					{
-						postId = graphResponse.getString("id");
-					}
-					catch (JSONException e)
-					{
-						// log
-						logError("JSON error", e);
-					}
-
-					FacebookRequestError error = response.getError();
-					if (error != null)
-					{
-						// log
-						logError("Failed to publish", error.getException());
-
-						// callback with 'exception'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onException(error.getException());
-						}
-					}
-					else
-					{
-						// callback with 'complete'
-						if (onPublishListener != null)
-						{
-							onPublishListener.onComplete(postId);
-						}
-					}
-				}
-				else
-				{
-					// log
-					logError("The GraphObject in Response of publish action has null value. Response=" + response.toString(), null);
-
-					if (onPublishListener != null)
-					{
-						onPublishListener.onComplete("0");
-					}
-				}
-			}
-		});
-
-		RequestAsyncTask task = new RequestAsyncTask(request);
-		task.execute();
-	}
-
-	private void openInviteDialog(Activity activity, Bundle params, final OnInviteListener onInviteListener)
-	{
-		mDialog = new WebDialog.RequestsDialogBuilder(activity, Session.getActiveSession(), params).
-			setOnCompleteListener(new WebDialog.OnCompleteListener()
-			{
-				@Override
-				public void onComplete(Bundle values, FacebookException error)
-				{
-					if (error != null)
-					{
-						// log
-						logError("Failed to invite", error);
-
-						if (error instanceof FacebookOperationCanceledException)
-						{
-							onInviteListener.onCancel();
-						}
-						else
-						{
-							if (onInviteListener != null)
-							{
-								onInviteListener.onException(error);
-							}
-						}
-					}
-					else
-					{
-						Object object = values.get("request");
-						if (object == null)
-						{
-							onInviteListener.onCancel();
-						}
-						else
-						{
-							List<String> invitedFriends = fetchInvitedFriends(values);
-							onInviteListener.onComplete(invitedFriends, object.toString());
-						}
-					}
-					mDialog = null;
-				}
-
-			}).build();
-
-		Window dialogWindow = mDialog.getWindow();
-		dialogWindow.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-		mDialog.show();
-	}
-
-	/**
-	 * Fetch invited friends from response bundle
-	 * 
-	 * @param values
-	 * @return list of invited friends
-	 */
-	@SuppressLint("DefaultLocale")
-	private static List<String> fetchInvitedFriends(Bundle values)
-	{
-		List<String> friends = new ArrayList<String>();
-
-		int size = values.size();
-		int numOfFriends = size - 1;
-		if (numOfFriends > 0)
-		{
-			for (int i = 0; i < numOfFriends; i++)
-			{
-				String key = String.format("to[%d]", i);
-				String friendId = values.getString(key);
-				if (friendId != null)
-				{
-					friends.add(friendId);
-				}
-			}
-		}
-
-		return friends;
-	}
-
-	/**
-	 * Get permissions that are accepted by user for current token
-	 * 
-	 * @return the list of accepted permissions
-	 */
-	private static List<String> getOpenSessionPermissions()
-	{
-		return getOpenSession().getPermissions();
-	}
-
-	private void openSession(Session session, boolean isRead)
-	{
-		Session.OpenRequest request = new Session.OpenRequest(mActivity);
-		if (request != null) //NOTE: this check is redundant, request can never be null.
-		{
-			request.setDefaultAudience(mConfiguration.getSessionDefaultAudience());
-			request.setLoginBehavior(mConfiguration.getSessionLoginBehavior());
-
-			if (isRead)
-			{
-				request.setPermissions(mConfiguration.getReadPermissions());
-
-				/*
-				 * In case there are also PUBLISH permissions, then we would ask for these permissions second
-				 * time (after, user accepted the read permissions)
-				 */
-				if (mConfiguration.hasPublishPermissions())
-				{
-					mSessionStatusCallback.askPublishPermissions();
-				}
-
-				// Open session with read permissions
-				session.openForRead(request);
-			}
-			else
-			{
-				request.setPermissions(mConfiguration.getPublishPermissions());
-				session.openForPublish(request);
-			}
-		}
-	}
-
-	/**
-	 * Call this method only if session really needs to be reopened for read or for publish. <br>
-	 * <br>
-	 * 
-	 * <b>Important</b><br>
-	 * Any open method must be called at most once, and cannot be called after the Session is closed. Calling
-	 * the method at an invalid time will result in {@link UnsupportedOperationException}.
-	 */
-	private void reopenSession()
-	{
-		Session session = Session.getActiveSession();
-		if (session != null && session.getState().equals(SessionState.CREATED_TOKEN_LOADED))
-		{
-			List<String> permissions = session.getPermissions();
-			List<String> publishPermissions = mConfiguration.getPublishPermissions();
-			if (publishPermissions != null && publishPermissions.size() > 0 && permissions.containsAll(publishPermissions))
-			{
-				openSession(session, false);
-			}
-			else if (permissions.containsAll(mConfiguration.getReadPermissions()))
-			{
-				openSession(session, true);
-			}
-		}
-	}
-
-	/**
-	 * Extend and ask user for PUBLISH permissions
-	 * 
-	 * @param activity
-	 */
-	private static void extendPublishPermissions()
-	{
-		Session session = Session.getActiveSession();
-
-		Session.NewPermissionsRequest request = new Session.NewPermissionsRequest(mActivity, mConfiguration.getPublishPermissions());
-		session.requestNewPublishPermissions(request);
-	}
-
-	/**
-	 * Helper method
-	 */
-	private static <T extends GraphObject> List<T> typedListFromResponse(Response response, Class<T> clazz)
-	{
-		GraphMultiResult multiResult = response.getGraphObjectAs(GraphMultiResult.class);
-		if (multiResult == null)
-		{
-			return null;
-		}
-
-		GraphObjectList<GraphObject> data = multiResult.getData();
-		if (data == null)
-		{
-			return null;
-		}
-
-		return data.castToListOf(clazz);
-	}
-
-	private class SessionStatusCallback implements Session.StatusCallback
-	{
-		private boolean mAskPublishPermissions = false;
-		private boolean mDoOnLogin = false;
-		OnLoginListener mOnLoginListener = null;
-		OnLogoutListener mOnLogoutListener = null;
-		OnReopenSessionListener mOnReopenSessionListener = null;
-
-		@Override
-		public void call(Session session, SessionState state, Exception exception)
-		{
-			/*
-			 * These are already authorized permissions
-			 */
-			List<String> permissions = session.getPermissions();
-
-			if (exception != null)
-			{
-				// log
-				logError("SessionStatusCallback: exception=", exception);
-
-				if (exception instanceof FacebookOperationCanceledException)
-				{
-					/*
-					 * If user canceled the read permissions dialog
-					 */
-					if (permissions.size() == 0)
-					{
-						mOnLoginListener.onNotAcceptingPermissions();
-					}
-					else
-					{
-						/*
-						 * User canceled the WRITE permissions. We do nothing here. Once the user will try to
-						 * do some action that require WRITE permissions, the dialog will be shown
-						 * automatically.
-						 */
-					}
-				}
-				else
-				{
-					mOnLoginListener.onException(exception);
-				}
-			}
-
-			// log
-			logInfo("SessionStatusCallback: state=" + state.name() + ", session=" + String.valueOf(session));
-
-			switch (state)
-			{
-			case CLOSED:
-				if (mOnLogoutListener != null)
-				{
-					mOnLogoutListener.onLogout();
-				}
-				break;
-
-			case CLOSED_LOGIN_FAILED:
-				break;
-
-			case CREATED:
-				break;
-
-			case CREATED_TOKEN_LOADED:
-				break;
-
-			case OPENING:
-				if (mOnLoginListener != null)
-				{
-					mOnLoginListener.onThinking();
-				}
-				break;
-
-			case OPENED:
-
-				/*
-				 * Check if we came from publishing actions where we ask again for publish permissions
-				 */
-				if (mOnReopenSessionListener != null)
-				{
-					mOnReopenSessionListener.onNotAcceptingPermissions();
-					mOnReopenSessionListener = null;
-				}
-
-				/*
-				 * Check if WRITE permissions were also defined in the configuration. If so, then ask in
-				 * another dialog for WRITE permissions.
-				 */
-				else if (mAskPublishPermissions && session.getState().equals(SessionState.OPENED))
-				{
-					if (mDoOnLogin)
-					{
-						/*
-						 * If user didn't accept the publish permissions, we still want to notify about
-						 * complete
-						 */
-						mDoOnLogin = false;
-						mOnLoginListener.onLogin();
-					}
-					else
-					{
-
-						mDoOnLogin = true;
-						extendPublishPermissions();
-						mAskPublishPermissions = false;
-					}
-				}
-				else
-				{
-					if (mOnLoginListener != null)
-					{
-						mOnLoginListener.onLogin();
-					}
-				}
-				break;
-
-			case OPENED_TOKEN_UPDATED:
-
-				/*
-				 * Check if came from publishing actions and we need to re-ask for publish permissions
-				 */
-				if (mOnReopenSessionListener != null)
-				{
-					mOnReopenSessionListener.onSuccess();
-					mOnReopenSessionListener = null;
-				}
-				else if (mDoOnLogin)
-				{
-					mDoOnLogin = false;
-
-					if (mOnLoginListener != null)
-					{
-						mOnLoginListener.onLogin();
-					}
-				}
-
-				break;
-
-			default:
-				break;
-			}
-		}
-
-		/**
-		 * If we want to open another dialog with publish permissions just after showing read permissions,
-		 * then this method should be called
-		 */
-		public void askPublishPermissions()
-		{
-			mAskPublishPermissions = true;
-		}
-	}
-
-	private static void logInfo(String message)
-	{
-		Logger.logInfo(SimpleFacebook.class, message);
-	}
-
-	private static void logError(String error, Throwable throwable)
-	{
-		if (throwable != null)
-		{
-			Logger.logError(SimpleFacebook.class, error, throwable);
-		}
-		else
-		{
-			Logger.logError(SimpleFacebook.class, error);
-		}
-	}
-
-	private interface OnReopenSessionListener
-	{
-		void onSuccess();
-
-		void onNotAcceptingPermissions();
-	}
-
-	/**
-	 * On my profile request listener
-	 * 
-	 * @author sromku
-	 * 
-	 */
-	public interface OnProfileRequestListener extends OnActionListener
-	{
-		void onComplete(Profile profile);
-	}
-
-	/**
-	 * On friends request listener
-	 * 
-	 * @author sromku
-	 * 
-	 */
-	public interface OnFriendsRequestListener extends OnActionListener
-	{
-		void onComplete(List<Profile> friends);
-	}
-	
-	/**
-	 * On check-ins request listener
-	 * 
-	 * @author sromku
-	 * 
-	 */
-	public interface OnCheckinsRequestListener extends OnActionListener
-	{
-		void onComplete(List<Checkins> checkins);
-	}
-	
-	/**
-	 * On get app requests listener
-	 * 
-	 * @author koraybalci
-	 * 
-	 */
-	public interface OnAppRequestsListener extends OnActionListener
-	{
-		void onComplete(JSONArray result);
-	}
-
-	/**
-	 * On delete request listener
-	 * 
-	 * @author koraybalci
-	 * 
-	 */
-	public interface OnDeleteRequestListener extends OnActionListener
-	{
-		void onComplete();
-	}
-
-	/**
-	 * On get scores requests listener
-	 * 
-	 * @author koraybalci
-	 * 
-	 */
-	public interface OnScoresRequestListener extends OnActionListener
-	{
-		void onComplete(JSONArray result);
-	}
-
-	/**
-	 * On post score listener
-	 * 
-	 * @author koraybalci
-	 * 
-	 */
-	public interface OnPostScoreListener extends OnActionListener
-	{
-		void onComplete();
-	}
-
-	/**
-	 * On albums request listener
-	 * 
-	 * @author sromku
-	 * 
-	 */
-	public interface OnAlbumsRequestListener extends OnActionListener
-	{
-		void onComplete(List<Album> albums);
-	}
-
-	/**
-	 * On publishing action listener
-	 * 
-	 * @author sromku
-	 * 
-	 */
-	public interface OnPublishListener extends OnActionListener
-	{
-		void onComplete(String id);
-	}
-
-	/**
-	 * On login/logout actions listener
-	 * 
-	 * @author sromku
-	 */
-	public interface OnLoginListener extends OnActionListener
-	{
-		/**
-		 * If user performed {@link FacebookTools#login(Activity)} action, this callback method will be
-		 * invoked
-		 */
-		void onLogin();
-
-		/**
-		 * If user pressed 'cancel' in READ (First) permissions dialog
-		 */
-		void onNotAcceptingPermissions();
-	}
-
-	public interface OnLogoutListener extends OnActionListener
-	{
-		/**
-		 * If user performed {@link FacebookTools#logout()} action, this callback method will be invoked
-		 */
-		void onLogout();
-	}
-
-	/**
-	 * On permission listener - If the App must request a specific permission (only to obtain the new Access
-	 * Token)
-	 * 
-	 * @author Gryzor
-	 * 
-	 */
-	public interface OnPermissionListener extends OnActionListener
-	{
-		/**
-		 * If the permission was granted, this callback is invoked.
-		 */
-		void onSuccess(final String accessToken);
-
-		/**
-		 * If user pressed 'cancel' in PUBLISH permissions dialog
-		 */
-		void onNotAcceptingPermissions();
-	}
-
-	/**
-	 * On invite action listener
-	 * 
-	 * @author sromku
-	 * 
-	 */
-	public interface OnInviteListener extends OnErrorListener
-	{
-		void onComplete(List<String> invitedFriends, String requestId);
-
-		void onCancel();
-	}		
-
-	/**
-	 * General interface in this simple sdk
-	 * 
-	 * @author sromku
-	 * 
-	 */
-	public interface OnActionListener extends OnErrorListener
-	{
-		void onThinking();
-	}
-
-	public interface OnErrorListener
-	{
-		void onException(Throwable throwable);
-
-		void onFail(String reason);
+		SessionManager.activity = null;
 	}
 
 }

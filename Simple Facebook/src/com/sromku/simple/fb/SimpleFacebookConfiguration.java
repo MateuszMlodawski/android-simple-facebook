@@ -6,8 +6,7 @@ import java.util.List;
 import com.facebook.SessionDefaultAudience;
 import com.facebook.SessionLoginBehavior;
 
-public class SimpleFacebookConfiguration
-{
+public class SimpleFacebookConfiguration {
 	private String mAppId;
 	private String mNamespace;
 	private List<String> mReadPermissions = null;
@@ -15,18 +14,18 @@ public class SimpleFacebookConfiguration
 	private SessionDefaultAudience mDefaultAudience = null;
 	private SessionLoginBehavior mLoginBehavior = null;
 	private boolean mHasPublishPermissions = false;
+	boolean mAllAtOnce = false;
 
-	private SimpleFacebookConfiguration(Builder builder)
-	{
+	private SimpleFacebookConfiguration(Builder builder) {
 		this.mAppId = builder.mAppId;
 		this.mNamespace = builder.mNamespace;
 		this.mReadPermissions = builder.mReadPermissions;
 		this.mPublishPermissions = builder.mPublishPermissions;
 		this.mDefaultAudience = builder.mDefaultAudience;
 		this.mLoginBehavior = builder.mLoginBehavior;
+		this.mAllAtOnce = builder.mAllAtOnce;
 
-		if (this.mPublishPermissions.size() > 0)
-		{
+		if (this.mPublishPermissions.size() > 0) {
 			this.mHasPublishPermissions = true;
 		}
 	}
@@ -36,8 +35,7 @@ public class SimpleFacebookConfiguration
 	 * 
 	 * @return
 	 */
-	String getAppId()
-	{
+	public String getAppId() {
 		return mAppId;
 	}
 
@@ -46,8 +44,7 @@ public class SimpleFacebookConfiguration
 	 * 
 	 * @return
 	 */
-	String getNamespace()
-	{
+	public String getNamespace() {
 		return mNamespace;
 	}
 
@@ -56,8 +53,7 @@ public class SimpleFacebookConfiguration
 	 * 
 	 * @return
 	 */
-	List<String> getReadPermissions()
-	{
+	public List<String> getReadPermissions() {
 		return mReadPermissions;
 	}
 
@@ -66,8 +62,7 @@ public class SimpleFacebookConfiguration
 	 * 
 	 * @return
 	 */
-	List<String> getPublishPermissions()
-	{
+	public List<String> getPublishPermissions() {
 		return mPublishPermissions;
 	}
 
@@ -76,8 +71,7 @@ public class SimpleFacebookConfiguration
 	 * 
 	 * @return
 	 */
-	boolean hasPublishPermissions()
-	{
+	boolean hasPublishPermissions() {
 		return mHasPublishPermissions;
 	}
 
@@ -86,8 +80,7 @@ public class SimpleFacebookConfiguration
 	 * 
 	 * @return
 	 */
-	SessionLoginBehavior getSessionLoginBehavior()
-	{
+	SessionLoginBehavior getSessionLoginBehavior() {
 		return mLoginBehavior;
 	}
 
@@ -96,32 +89,66 @@ public class SimpleFacebookConfiguration
 	 * 
 	 * @return
 	 */
-	SessionDefaultAudience getSessionDefaultAudience()
-	{
+	SessionDefaultAudience getSessionDefaultAudience() {
 		return mDefaultAudience;
 	}
 
-	public static class Builder
-	{
+	/**
+	 * Return <code>True</code> if all permissions - read and publish should be
+	 * asked one after another in the same time after logging in.
+	 */
+	boolean isAllPermissionsAtOnce() {
+		return mAllAtOnce;
+	}
+
+	/**
+	 * Add new permissions in a runtime
+	 * 
+	 * @param permissions
+	 */
+	void addNewPermissions(Permission[] permissions) {
+		for (Permission permission : permissions) {
+			switch (permission.getType()) {
+			case READ:
+				if (!mReadPermissions.contains(permission.getValue())) {
+					mReadPermissions.add(permission.getValue());
+				}
+				break;
+			case PUBLISH:
+				if (!mPublishPermissions.contains(permission.getValue())) {
+					mPublishPermissions.add(permission.getValue());
+				}
+				break;
+			default:
+				break;
+			}
+		}
+
+		if (this.mPublishPermissions.size() > 0) {
+			this.mHasPublishPermissions = true;
+		}
+	}
+
+	public static class Builder {
 		private String mAppId = null;
 		private String mNamespace = null;
 		private List<String> mReadPermissions = new ArrayList<String>();
 		private List<String> mPublishPermissions = new ArrayList<String>();
 		private SessionDefaultAudience mDefaultAudience = SessionDefaultAudience.FRIENDS;
 		private SessionLoginBehavior mLoginBehavior = SessionLoginBehavior.SSO_WITH_FALLBACK;
+		private boolean mAllAtOnce = false;
 
-		public Builder()
-		{
+		public Builder() {
 		}
 
 		/**
 		 * Set facebook App Id. <br>
-		 * The application id is located in the dashboard of the app in admin panel of facebook
+		 * The application id is located in the dashboard of the app in admin
+		 * panel of facebook
 		 * 
 		 * @param appId
 		 */
-		public Builder setAppId(String appId)
-		{
+		public Builder setAppId(String appId) {
 			mAppId = appId;
 			return this;
 		}
@@ -132,8 +159,7 @@ public class SimpleFacebookConfiguration
 		 * @param namespace
 		 * @return
 		 */
-		public Builder setNamespace(String namespace)
-		{
+		public Builder setNamespace(String namespace) {
 			mNamespace = namespace;
 			return this;
 		}
@@ -143,12 +169,9 @@ public class SimpleFacebookConfiguration
 		 * 
 		 * @param permissions
 		 */
-		public Builder setPermissions(Permissions[] permissions)
-		{
-			for (Permissions permission: permissions)
-			{
-				switch (permission.getType())
-				{
+		public Builder setPermissions(Permission[] permissions) {
+			for (Permission permission : permissions) {
+				switch (permission.getType()) {
 				case READ:
 					mReadPermissions.add(permission.getValue());
 					break;
@@ -164,22 +187,41 @@ public class SimpleFacebookConfiguration
 		}
 
 		/**
-		 * @param defaultAudience The defaultAudience to set. 
+		 * @param defaultAudience
+		 *            The defaultAudience to set.
 		 * @see SessionDefaultAudience
 		 */
-		public Builder setDefaultAudience(SessionDefaultAudience defaultAudience)
-		{
+		public Builder setDefaultAudience(SessionDefaultAudience defaultAudience) {
 			mDefaultAudience = defaultAudience;
 			return this;
 		}
 
 		/**
-		 * @param loginBehavior The loginBehavior to set.
+		 * @param loginBehavior
+		 *            The loginBehavior to set.
 		 * @see SessionLoginBehavior
 		 */
-		public Builder setLoginBehavior(SessionLoginBehavior loginBehavior)
-		{
+		public Builder setLoginBehavior(SessionLoginBehavior loginBehavior) {
 			mLoginBehavior = loginBehavior;
+			return this;
+		}
+
+		/**
+		 * If your app has both: read and publish permissions, then this
+		 * configuration can be very useful. When you first time login the popup
+		 * with read permissions that the user should accept is appeared. After
+		 * this you can decide, if you want the dialog of publish permissions to
+		 * appear or not. <br>
+		 * <br>
+		 * <b>Note:</b>Facebook requests not to ask the user for read and then
+		 * publish permissions at once, thus the default value will be
+		 * <code>false</code> for this flag.
+		 * 
+		 * @param allAtOnce
+		 * @return {@link Builder}
+		 */
+		public Builder setAskForAllPermissionsAtOnce(boolean allAtOnce) {
+			mAllAtOnce = allAtOnce;
 			return this;
 		}
 
@@ -188,50 +230,17 @@ public class SimpleFacebookConfiguration
 		 * 
 		 * @return
 		 */
-		public SimpleFacebookConfiguration build()
-		{
+		public SimpleFacebookConfiguration build() {
 			return new SimpleFacebookConfiguration(this);
 		}
 
 	}
 
-	public String toString()
-	{
+	public String toString() {
 		StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder
-			.append("[ ")
-
-			// app id
-			.append("mAppId:")
-			.append(mAppId)
-			.append(", ")
-
-			// namespace
-			.append("mNamespace:")
-			.append(mNamespace)
-			.append(", ")
-
-			// default audience
-			.append("mDefaultAudience:")
-			.append(mDefaultAudience.name())
-			.append(", ")
-
-			// login behavior
-			.append("mLoginBehavior:")
-			.append(mLoginBehavior.name())
-			.append(", ")
-
-			// read permissions
-			.append("mReadPermissions:")
-			.append(mReadPermissions.toString())
-			.append(", ")
-
-			// publish permissions
-			.append("mPublishPermissions:")
-			.append(mPublishPermissions.toString())
-
-			.append(" ]");
-
+		stringBuilder.append("[ ").append("mAppId:").append(mAppId).append(", ").append("mNamespace:").append(mNamespace).append(", ").append("mDefaultAudience:").append(mDefaultAudience.name())
+				.append(", ").append("mLoginBehavior:").append(mLoginBehavior.name()).append(", ").append("mReadPermissions:").append(mReadPermissions.toString()).append(", ")
+				.append("mPublishPermissions:").append(mPublishPermissions.toString()).append(" ]");
 		return stringBuilder.toString();
 	}
 }

@@ -1,2 +1,6 @@
-Simple\ Facebook/.classpath
-Simple\ Facebook/project.properties
+bin
+gen
+.DS_Store
+*.class
+*.sh
+.settings

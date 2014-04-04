@@ -3,14 +3,16 @@ package com.sromku.simple.fb;
 import com.facebook.internal.SessionAuthorizationType;
 
 /**
- * https://developers.facebook.com/docs/howtos/androidsdk/3.0/native-login/
+ * Hopefully all facebook permissions.
  * 
  * @author sromku
+ * @see https://developers.facebook.com/docs/reference/login/
+ * @see https://developers.facebook.com/docs/reference/fql/permissions/
  */
-public enum Permissions
-{
+public enum Permission {
+
 	BASIC_INFO("basic_info", Type.READ),
-	
+
 	USER_ABOUT_ME("user_about_me", Type.READ),
 	FRIENDS_ABOUT_ME("friends_about_me", Type.READ),
 
@@ -37,7 +39,7 @@ public enum Permissions
 
 	USER_INTERESTS("user_interests", Type.READ),
 	FRIENDS_INTERESTS("friends_interests", Type.READ),
-	
+
 	USER_PHOTOS("user_photos", Type.READ),
 	FRIENDS_PHOTOS("friends_photos", Type.READ),
 
@@ -55,10 +57,10 @@ public enum Permissions
 
 	USER_RELATIONSHIPS("user_relationships", Type.READ),
 	FRIENDS_RELATIONSHIPS("friends_relationships", Type.READ),
-	
+
 	USER_RELATIONSHIP_DETAILS("user_relationship_details", Type.READ),
 	FRIENDS_RELATIONSHIP_DETAILS("friends_relationship_details", Type.READ),
-	
+
 	USER_STATUS("user_status", Type.READ),
 	FRIENDS_STATUS("friends_status", Type.READ),
 
@@ -76,10 +78,10 @@ public enum Permissions
 
 	USER_LOCATION("user_location", Type.READ),
 	FRIENDS_LOCATION("friends_location", Type.READ),
-	
+
 	USER_PHOTO_VIDEO_TAGS("user_photo_video_tags", Type.READ),
 	FRIENDS_PHOTO_VIDEO_TAGS("friends_photo_video_tags", Type.READ),
-	
+
 	READ_FRIENDLISTS("read_friendlists", Type.READ),
 	READ_MAILBOX("read_mailbox", Type.READ),
 	READ_REQUESTS("read_requests", Type.READ),
@@ -90,6 +92,7 @@ public enum Permissions
 
 	PUBLISH_ACTION("publish_actions", Type.PUBLISH),
 	PUBLISH_STREAM("publish_stream", Type.PUBLISH),
+
 	ADS_MANAGMENT("ads_management", Type.PUBLISH),
 	CREATE_EVENT("create_event", Type.PUBLISH),
 	RSVP_EVENT("rsvp_event", Type.PUBLISH),
@@ -97,35 +100,74 @@ public enum Permissions
 	MANAGE_NOTIFICATIONS("manage_notifications", Type.PUBLISH),
 	MANAGE_PAGES("manage_pages", Type.PUBLISH);
 
-	private static class Type
-	{
-		static final SessionAuthorizationType PUBLISH = SessionAuthorizationType.PUBLISH;
-		static final SessionAuthorizationType READ = SessionAuthorizationType.READ;
+	/**
+	 * Permission type enum: <li>READ</li> <li>PUBLISH</li><br>
+	 */
+	public static enum Type {
+		PUBLISH(SessionAuthorizationType.PUBLISH),
+		READ(SessionAuthorizationType.READ);
+
+		private SessionAuthorizationType sessionAuthorizationType;
+
+		private Type(SessionAuthorizationType sessionAuthorizationType) {
+			this.sessionAuthorizationType = sessionAuthorizationType;
+		}
 	};
+
+	public static enum Page {
+		/**
+		 * Manage admins<br>
+		 * Full Admin
+		 */
+		ADMINISTER,
+		/**
+		 * Edit the Page and add apps<br>
+		 * Full Admin, Content Creator
+		 */
+		EDIT_PROFILE,
+		/**
+		 * Create posts as the Page<br>
+		 * Full Admin, Content Creator
+		 */
+		CREATE_CONTENT,
+		/**
+		 * Respond to and delete comments, send messages as the Page<br>
+		 * Full Admin, Content Creator, Moderator
+		 */
+		MODERATE_CONTENT,
+		/**
+		 * Create ads and unpublished page posts<br>
+		 * Full Admin, Content Creator, Moderator, Ads Creator
+		 */
+		CREATE_ADS,
+		/**
+		 * View Insights<br>
+		 * Full Admin, Content Creator, Moderator, Ads Creator, Insights Manager
+		 */
+		BASIC_ADMIN
+	}
 
 	private String mValue;
 	private SessionAuthorizationType mType;
 
-	private Permissions(String value, SessionAuthorizationType type)
-	{
+	private Permission(String value, Type type) {
 		mValue = value;
-		mType = type;
+		mType = type.sessionAuthorizationType;
 	}
 
-	public String getValue()
-	{
+	public String getValue() {
 		return mValue;
 	}
 
-	public SessionAuthorizationType getType()
-	{
+	public SessionAuthorizationType getType() {
 		return mType;
 	}
-	
-	public static Permissions findPermission(String value)
-	{
-		for (Permissions p : Permissions.values()) {
-			if(p.getValue().equals(value)) return p;
+
+	public static Permission fromValue(String pemissionValue) {
+		for (Permission permission : values()) {
+			if (permission.mValue.equals(pemissionValue)) {
+				return permission;
+			}
 		}
 		return null;
 	}

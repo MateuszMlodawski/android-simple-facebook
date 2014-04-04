@@ -1,100 +1,108 @@
 package com.sromku.simple.fb.entities;
 
-import org.json.JSONObject;
-
 import com.facebook.model.GraphObject;
+import com.sromku.simple.fb.utils.Utils;
 
 public class Place {
+
+	private static final String ID = "id";
+	private static final String NAME = "name";
+	private static final String LOCATION = "location";
+	private static final String STREET = "street";
+	private static final String CITY = "city";
+	private static final String STATE = "state";
+	private static final String COUNTRY = "country";
+	private static final String ZIP = "zip";
+	private static final String LATITUDE = "latitude";
+	private static final String LONGITUDE = "longitude";
+
 	private String mId;
 	private String mName;
 	private String mStreet;
 	private String mCity;
+	private String mState;
 	private String mCountry;
-	private int mZip;
-	private long mLatitude;
-	private long mLongitude;
+	private Integer mZip;
+	private Double mLatitude;
+	private Double mLongitude;
 
-	public String getStreet() {
-		return mStreet;
-	}
+	private Place(GraphObject graphObject) {
+		if (graphObject == null) {
+			return;
+		}
 
-	public void setStreet(String mStreet) {
-		this.mStreet = mStreet;
-	}
+		// id
+		mId = Utils.getPropertyString(graphObject, ID);
 
-	public String getCity() {
-		return mCity;
-	}
+		// name
+		mName = Utils.getPropertyString(graphObject, NAME);
 
-	public void setCity(String mCity) {
-		this.mCity = mCity;
-	}
+		// location
+		GraphObject location = Utils.getPropertyGraphObject(graphObject, LOCATION);
 
-	public String getCountry() {
-		return mCountry;
-	}
+		// street
+		mStreet = Utils.getPropertyString(location, STREET);
 
-	public void setCountry(String mCountry) {
-		this.mCountry = mCountry;
-	}
+		// city
+		mCity = Utils.getPropertyString(location, CITY);
 
-	public int getZip() {
-		return mZip;
-	}
+		// country
+		mCountry = Utils.getPropertyString(location, COUNTRY);
 
-	public void setZip(int mZip) {
-		this.mZip = mZip;
-	}
+		// zip
+		mZip = Utils.getPropertyInteger(location, ZIP);
 
-	public long getLatitude() {
-		return mLatitude;
-	}
+		// state
+		mState = Utils.getPropertyString(location, STATE);
 
-	public void setLatitude(long mLatitude) {
-		this.mLatitude = mLatitude;
-	}
+		// latitude
+		mLatitude = Utils.getPropertyDouble(location, LATITUDE);
 
-	public long getLongitude() {
-		return mLongitude;
-	}
-
-	public void setLongitude(long mLongitude) {
-		this.mLongitude = mLongitude;
-	}
-
-	public String getId() {
-		return mId;
-	}
-
-	public void setId(String mId) {
-		this.mId = mId;
-	}
-
-	public String getName() {
-		return mName;
-	}
-
-	public void setName(String mName) {
-		this.mName = mName;
+		// longitude
+		mLongitude = Utils.getPropertyDouble(location, LONGITUDE);
 	}
 
 	public static Place create(GraphObject graphObject) {
 		return new Place(graphObject);
 	}
 
-	private Place(GraphObject graphObject) {
-		mId = String.valueOf(graphObject.getProperty("id"));
-		mName = String.valueOf(graphObject.getProperty("name"));
-
-		JSONObject jsonObject = (JSONObject) graphObject.getProperty("location");
-		if (jsonObject != null) {
-			mStreet = jsonObject.optString("street");
-			mCity = jsonObject.optString("city");
-			mCountry = jsonObject.optString("country");
-			mZip = jsonObject.optInt("zip");
-			
-			mLatitude= jsonObject.optLong("latitude");
-			mLongitude= jsonObject.optLong("longitude");
-		}
+	public String getStreet() {
+		return mStreet;
 	}
+
+	public String getCity() {
+		return mCity;
+	}
+
+	/**
+	 * @return the state
+	 */
+	public String getState() {
+		return mState;
+	}
+
+	public String getCountry() {
+		return mCountry;
+	}
+
+	public Integer getZip() {
+		return mZip;
+	}
+
+	public Double getLatitude() {
+		return mLatitude;
+	}
+
+	public Double getLongitude() {
+		return mLongitude;
+	}
+
+	public String getId() {
+		return mId;
+	}
+
+	public String getName() {
+		return mName;
+	}
+
 }

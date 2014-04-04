@@ -1,112 +1,72 @@
 package com.sromku.simple.fb.entities;
 
-import org.json.JSONObject;
-
 import com.facebook.model.GraphObject;
+import com.sromku.simple.fb.utils.Utils;
 
-public class Work
-{
-	public static final String NAME = "name";
-	public static final String EMPLOYER = "employer";
-	public static final String LOCATION = "location";
-	public static final String POSITION = "position";
-	public static final String DESCRIPTION = "description";
-	public static final String START_DATE = "start_date";
-	public static final String END_DATE = "end_date";
+public class Work {
 
-	private String mEmployer;
+	private static final String NAME = "name";
+	private static final String EMPLOYER = "employer";
+	private static final String LOCATION = "location";
+	private static final String POSITION = "position";
+	private static final String DESCRIPTION = "description";
+	private static final String START_DATE = "start_date";
+	private static final String END_DATE = "end_date";
+
+	private User mEmployer;
 	private Location mLocation;
 	private String mPosition;
 	private String mDescription;
 	private String mStartDate;
 	private String mEndDate;
 
-	private Work(GraphObject graphObject)
-	{
-		/*
-		 * employer
-		 */
-		mEmployer = getName(graphObject, EMPLOYER);
+	private Work(GraphObject graphObject) {
 
-		/*
-		 * location
-		 */
-		if (graphObject != null)
-		{
-			GraphObject graphObjectLocation = graphObject.getPropertyAs(LOCATION, GraphObject.class);
-			if (graphObjectLocation != null)
-			{
-				mLocation = Location.create(graphObjectLocation);
-			}
-		}
+		// employer
+		mEmployer = Utils.createUser(graphObject, EMPLOYER);
 
-		/*
-		 * position
-		 */
-		mPosition = getName(graphObject, POSITION);
+		// location
+		GraphObject location = Utils.getPropertyGraphObject(graphObject, LOCATION);
+		mLocation = Location.create(location);
 
-		/*
-		 * description
-		 */
-		Object property = graphObject.getProperty(DESCRIPTION);
-		mDescription = String.valueOf(property);
+		// position
+		mPosition = Utils.getPropertyInsideProperty(graphObject, POSITION, NAME);
 
-		/*
-		 * start date
-		 */
-		property = graphObject.getProperty(START_DATE);
-		mStartDate = String.valueOf(property);
+		// description
+		mDescription = Utils.getPropertyString(graphObject, DESCRIPTION);
 
-		/*
-		 * end date
-		 */
-		property = graphObject.getProperty(END_DATE);
-		mEndDate = String.valueOf(property);
+		// start date
+		mStartDate = Utils.getPropertyString(graphObject, START_DATE);
+
+		// end date
+		mEndDate = Utils.getPropertyString(graphObject, END_DATE);
 	}
 
-	private static String getName(GraphObject graphObject, String property)
-	{
-		JSONObject jsonObject = (JSONObject)graphObject.getProperty(property);
-		if (jsonObject != null)
-		{
-			String name = jsonObject.optString(NAME);
-			return name;
-		}
-		return null;
-	}
-
-	public static Work create(GraphObject graphObject)
-	{
+	public static Work create(GraphObject graphObject) {
 		return new Work(graphObject);
 	}
 
-	public String getEmployer()
-	{
+	public User getEmployer() {
 		return mEmployer;
 	}
 
-	public Location getLocation()
-	{
+	public Location getLocation() {
 		return mLocation;
 	}
 
-	public String getPosition()
-	{
+	public String getPosition() {
 		return mPosition;
 	}
 
-	public String getDescription()
-	{
+	public String getDescription() {
 		return mDescription;
 	}
 
-	public String getStartDate()
-	{
+	public String getStartDate() {
 		return mStartDate;
 	}
 
-	public String getEndDate()
-	{
+	public String getEndDate() {
 		return mEndDate;
 	}
 }
