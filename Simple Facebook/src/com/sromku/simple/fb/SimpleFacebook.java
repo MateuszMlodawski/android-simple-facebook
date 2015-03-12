@@ -110,7 +110,7 @@ public class SimpleFacebook {
 	public static void initialize(Activity activity) {
 		if (mInstance == null) {
 			mInstance = new SimpleFacebook();
-			mSessionManager = new SessionManager(mActivity, mConfiguration);
+			mSessionManager = new SessionManager(activity, mConfiguration);
 		}
 		mActivity = activity;
 		SessionManager.activity = activity;
@@ -1622,6 +1622,27 @@ public class SimpleFacebook {
 //			publishStoryDialogAction.execute();
 //		}
 //	}
+
+	/**
+	 * Create new album.<br>
+	 * <br>
+	 * 
+	 * <b>Permission:</b><br>
+	 * {@link Permission#PUBLISH_ACTION}<br>
+	 * <br>
+	 * 
+	 * <b>Important:</b><br>
+	 * Make sure has {@link Permission#USER_PHOTOS} permission<br>
+	 * before use this function.<br>
+	 * 
+	 * @param album 
+	 *            The album to create 
+	 * @param onPublishListener
+	 *            The callback listener
+	 */
+	public void publish(Album album, OnPublishListener onPublishListener) {
+		publish("me", (Publishable) album, onPublishListener);
+	}
 
 	/**
 	 * Publish photo to specific album. You can use
